@@ -32,7 +32,6 @@
 #'                    DO.unit = "mg/L")
 #'
 #' @export
-
 input.info <- function(ID = c(NA, NA, NA, NA, NA, NA, NA, NA),
                  Mass = c(NA, NA, NA, NA, NA, NA, NA, NA),
                  Volume = c(NA, NA, NA, NA, NA, NA, NA, NA),
@@ -60,6 +59,5 @@ input.info <- function(ID = c(NA, NA, NA, NA, NA, NA, NA, NA),
 
   info.data$DO.unit <- as.character(DO)
 
-  print(info.data)
   return(info.data)
 }
