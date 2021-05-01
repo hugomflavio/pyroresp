@@ -52,7 +52,7 @@ load.coolterm.file <- function(file) {
 #' 
 #' @export
 #' 
-merge.pyroscience.coolterm <- function(pyroscience, coolterm) {
+merge_pyroscience_coolterm <- function(pyroscience, coolterm) {
 	pyroscience$Phase <- as.character(pyroscience$Phase)
 
 	pyroscience$Phase[pyroscience$Date.Time < coolterm$Start[1]] <- "F0"

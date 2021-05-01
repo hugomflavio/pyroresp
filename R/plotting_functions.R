@@ -9,7 +9,7 @@
 #' 
 #' @export
 #' 
-plot.meas <- function(input, phases, temperature = TRUE, oxygen.label = "Oxygen") {
+plot_meas <- function(input, phases, temperature = TRUE, oxygen.label = "Oxygen") {
 	substrRight <- function(x, n){
 	  substr(x, nchar(x)-n+1, nchar(x))
 	}
