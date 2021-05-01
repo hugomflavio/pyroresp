@@ -4,33 +4,36 @@
 \alias{pyroscience.aquaresp}
 \title{Convert Respirometry Data from PyroScience and AquaResp Software to the FishResp Format}
 \usage{
-pyroscience.aquaresp(pyroscience.file,
-                     aquaresp.file,
-                     fishresp.file,
-                     n.chamber = c(1,2,3,4),
-                     date.format = c("DMY", "MDY", "YMD"),
-                     wait.phase = NA, measure.phase = NA)
+pyroscience.aquaresp(
+  input,
+  pyro.type = c("logger", "workbench"),
+  aquaresp,
+  n.chamber = 1:4,
+  date.format,
+  wait.phase = NA,
+  measure.phase = NA
+)
 }
 \arguments{
-\item{pyroscience.file}{the name of a file which contains raw data obtained from the 'Pyro Oxygen Logger' software (\href{https://www.pyro-science.com}{PyroScience})}
+\item{input}{a dataframe or name of a file which contains raw data obtained from the 'Pyro Oxygen Logger' software (\href{https://www.pyro-science.com}{PyroScience})}
 
-\item{aquaresp.file}{the name of a file which contains summary data obtained from the 'AquaResp' software (\href{www.aquaresp.com}{free software})}
+\item{pyro.type}{The type of pyroscience software used to log the data (one of "logger" or "workbench")}
 
-\item{fishresp.file}{the name of an exported file containing raw data in the 'FishResp' format}
+\item{aquaresp}{a dataframe or name of a file which contains summary data obtained from the 'AquaResp' software (\href{www.aquaresp.com}{free software})}
 
 \item{n.chamber}{integer: the number of chambers used in an experiment (including empty ones)}
 
-\item{date.format}{string: date format (DMY, MDY or YMD) used in raw data obtained from the 'Pyro Oxygen Logger' software}
+\item{date.format}{string: date format used in raw data obtained from the 'Pyro Oxygen Logger' software (e.g. "\%Y-\%m-\%d")}
 
 \item{wait.phase}{integer: duration of the wait phase (in seconds), see the 'AquaResp' summary file (row #5)}
 
 \item{measure.phase}{integer: duration of the measure phase (in seconds), see the 'AquaResp' summary file (row #6)}
 }
 \value{
-The function exports a file containing raw data in the 'FishResp' format
+The function returns a data frame containing raw data in the 'FishResp' format
 }
 \description{
-The function is used to convert raw data from 'Pyro Oxygen Logger' (\href{https://www.pyro-science.com}{PyroScience}) and a summary file from 'AquaResp' (\href{www.aquaresp.com}{free software}) to 'FishResp' format. This function should be applied before usage of the functions \code{\link{import.test}} and \code{\link{import.meas}}. The output is a file containing raw respirometry data in the 'FishResp' format (see Details in \code{\link{import.test}} to read more information about the 'FishResp' format)
+The function is used to convert raw data from 'Pyro Oxygen Logger' or 'Pyroscience Workbench' (\href{https://www.pyro-science.com}{PyroScience}) and a summary file from 'AquaResp' (\href{www.aquaresp.com}{free software}) to 'FishResp' format. This function should be applied before usage of the functions \code{\link{import.test}} and \code{\link{import.meas}}. The output is a file containing raw respirometry data in the 'FishResp' format (see Details in \code{\link{import.test}} to read more information about the 'FishResp' format)
 }
 \examples{
 
@@ -39,10 +42,10 @@ pyroscience.path = system.file("extdata/pyroscience/pyroscience.txt",
 aquaresp.path = system.file("extdata/pyroscience/pyroscience-aquaresp.txt",
                  package = "FishResp")
 
-pyroscience.aquaresp(pyroscience.file = pyroscience.path,
-                     aquaresp.file = aquaresp.path,
-                     fishresp.file = "fishresp.txt",
-                     date.format = "MDY",
+pyroscience.aquaresp(file = pyroscience.path,
+                     pyro.type = "logger",
+                     aquaresp = aquaresp.path,
+                     date.format = "\%m/\%d/\%Y",
                      n.chamber = 1,
                      wait.phase = 120,
                      measure.phase = 600)
