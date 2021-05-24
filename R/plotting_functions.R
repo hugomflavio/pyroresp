@@ -9,7 +9,7 @@
 #' 
 #' @export
 #' 
-plot_meas <- function(input, phases, temperature = TRUE, oxygen.label = "Oxygen") {
+plot_meas <- function(input, phases, chambers, temperature = TRUE, oxygen.label = "Oxygen") {
 	substrRight <- function(x, n){
 	  substr(x, nchar(x)-n+1, nchar(x))
 	}
@@ -17,11 +17,22 @@ plot_meas <- function(input, phases, temperature = TRUE, oxygen.label = "Oxygen"
 	if (!missing(phases)) {
 		if (!is.numeric(phases))
 			stop("phases must be a numeric vector")
+
+		n.phases <- max(as.numeric(gsub("(F|M)", "", unique(input$Phase))))
+
+		if (max(phases) > n.phases)
+			stop("Requested phases go over available phases (", n.phases, ").", call. = FALSE)
+		
 		phases <- as.vector(outer(c("M", "F"), phases, paste0))
 		phase.string <- paste0("^", paste(phases, collapse = "$|^"), "$")
 		input <- input[grepl(phase.string, input$Phase), ]
 		input$Phase <- droplevels(input$Phase)
 		rm(phases, phase.string)
+	}
+
+	if (!missing(chambers)) {
+		cols.to.keep <- c("Date.Time", "Phase", as.vector(outer(c("Ox.", "Temp."), chambers, paste0)))
+		input <- input[,cols.to.keep]
 	}
 
 	if (any(grepl("F", input$Phase))) {
@@ -64,7 +75,7 @@ plot_meas <- function(input, phases, temperature = TRUE, oxygen.label = "Oxygen"
 	if (paint_flush)
 		p <- p + ggplot2::geom_rect(data = flush.times, ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "black", alpha = 0.1)
 
-	p <- p + ggplot2::geom_line(ggplot2::aes(y = Oxygen, col = oxygen.label))
+	p <- p + ggplot2::geom_line(ggplot2::aes(y = Oxygen, col = oxygen.label, group = Phase))
 
 	if (temperature) {
 		ox.mean <- mean(plotdata$Oxygen)
@@ -84,7 +95,7 @@ plot_meas <- function(input, phases, temperature = TRUE, oxygen.label = "Oxygen"
 		  (y + a * c.factor - b) / c.factor # = x
 		}
 
-		p <- p + ggplot2::geom_line(ggplot2::aes(y = data.link(Temperature), col = "Temperature"))
+		p <- p + ggplot2::geom_line(ggplot2::aes(y = data.link(Temperature), col = "Temperature", group = Phase))
  		p <- p + ggplot2::scale_y_continuous(sec.axis = ggplot2::sec_axis(trans = axis.link, name = "Temperature"))
 		p <- p + ggplot2::scale_colour_manual(values = c("blue", "red"))
 	} else {
