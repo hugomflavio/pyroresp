@@ -1,6 +1,6 @@
 #' Prepare Raw Respirometry Data
 #'
-#' This function is used for preparation of raw data before the actual respirometry analysis. As namely, the function will create measurement points for each second (the required FishResp format) if the time interval between two measurement points is more than one second. In addition, low and high thresold for both dissolved oxygen and water temperature might be applied here. The measurement points beyond the threshold(s) will be transformed to NA.
+#' This function is used for preparation of raw data in the FishResp format before the actual respirometry analysis. As namely, the function will create measurement points for each second (the required FishResp format) if the time interval between two measurement points is more than one second. In addition, low and high thresold for both dissolved oxygen and water temperature might be applied here. The measurement points beyond the threshold(s) will be transformed to NA (be careful if use the 'parallel' method for background respiration correction as it might transform DO or Temp to NA as well).
 #'
 #' @usage
 #' prepare.data(import.file, export.file,
@@ -23,8 +23,16 @@
 #' @importFrom utils read.table write.table
 #'
 #' @examples
-#' # The example code will be added later...
+#' \dontrun{
+#' amphipod.path = system.file("extdata/amphipod/amphipod.txt",
+#'                  package = "FishResp")
 #'
+#' prepare.data(import.file = amphipod.path,
+#'              export.file = "amphipod_corrected.txt",
+#'              date.format = "DMY",
+#'              DO.low = 0.5,
+#'              DO.high = 12)
+#' }
 #' @export
 
 prepare.data <- function(import.file, export.file,
@@ -35,6 +43,8 @@ prepare.data <- function(import.file, export.file,
   MR.data <- read.table(import.file, sep = "\t", header=T,
                         check.names=FALSE, strip.white=T)
   colnames(MR.data)[1]  <- "Date.Time"
+  for(i in 3:ncol(MR.data)){MR.data[,i] = as.numeric(gsub(',','.', MR.data[,i]))}
+  MR.data <- MR.data[!(is.na(MR.data$Date.Time) | MR.data$Date.Time==""), ]  # to remove empty lines
 
   # indexing the first  measurement point and the last one
   start <- MR.data$Date.Time[1]

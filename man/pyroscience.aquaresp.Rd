@@ -15,9 +15,9 @@ pyroscience.aquaresp(
 )
 }
 \arguments{
-\item{input}{a dataframe or name of a file which contains raw data obtained from the 'Pyro Oxygen Logger' software (\href{https://www.pyro-science.com}{PyroScience})}
+\item{pyroscience.file}{the name of a file which contains raw data obtained from the 'Pyro Oxygen Logger' software (\href{https://www.pyroscience.com/}{PyroScience})}
 
-\item{pyro.type}{The type of pyroscience software used to log the data (one of "logger" or "workbench")}
+\item{aquaresp.file}{the name of a file which contains summary data obtained from the 'AquaResp' software (\href{https://www.aquaresp.com}{free software})}
 
 \item{aquaresp}{a dataframe or name of a file which contains summary data obtained from the 'AquaResp' software (\href{www.aquaresp.com}{free software})}
 
@@ -33,10 +33,10 @@ pyroscience.aquaresp(
 The function returns a data frame containing raw data in the 'FishResp' format
 }
 \description{
-The function is used to convert raw data from 'Pyro Oxygen Logger' or 'Pyroscience Workbench' (\href{https://www.pyro-science.com}{PyroScience}) and a summary file from 'AquaResp' (\href{www.aquaresp.com}{free software}) to 'FishResp' format. This function should be applied before usage of the functions \code{\link{import.test}} and \code{\link{import.meas}}. The output is a file containing raw respirometry data in the 'FishResp' format (see Details in \code{\link{import.test}} to read more information about the 'FishResp' format)
+The function is used to convert raw data from 'Pyro Oxygen Logger' (\href{https://www.pyroscience.com/}{PyroScience}) and a summary file from 'AquaResp' (\href{https://www.aquaresp.com}{free software}) to 'FishResp' format. This function should be applied before usage of the functions \code{\link{import.test}} and \code{\link{import.meas}}. The output is a file containing raw respirometry data in the 'FishResp' format (see Details in \code{\link{import.test}} to read more information about the 'FishResp' format)
 }
 \examples{
-
+\dontrun{
 pyroscience.path = system.file("extdata/pyroscience/pyroscience.txt",
                  package = "FishResp")
 aquaresp.path = system.file("extdata/pyroscience/pyroscience-aquaresp.txt",
@@ -49,5 +49,5 @@ pyroscience.aquaresp(file = pyroscience.path,
                      n.chamber = 1,
                      wait.phase = 120,
                      measure.phase = 600)
-
+}
 }
