@@ -6,7 +6,7 @@
 #' 
 #' @export
 #' 
-load.coolterm.file <- function(file) {
+load.coolterm.file <- function(file, max.gap.fix = 1) {
 	if (!file.exists(file))
 		stop("Could not find target file.", call. = FALSE)
 	
@@ -34,10 +34,15 @@ load.coolterm.file <- function(file) {
 		attributes(x)$overlaps <- which(check)
 	}
 
-	if (any(check <- x$Start[-1] > (x$Stop[-nrow(x)] + 1))) {
-		maxgap <- max(as.numeric(difftime(x$Start[which(check) + 1], x$Stop[check])) - 1)
-		warning("Found ", sum(check), " gap(s) between phases! Maximum gap: ", maxgap, " second(s). Saving troublesome rows in attributes.", call. = FALSE, immediate. = TRUE)
-		attributes(x)$gaps <- which(check)
+	aux <- as.numeric(difftime(x$Start[-1], x$Stop[-nrow(x)])) - 1
+	if (any(aux > 0)) {
+		warning("Found ", sum(aux > 0), " gap(s) between phases! Maximum gap: ", max(aux), " second(s). Saving troublesome rows in attributes.", call. = FALSE, immediate. = TRUE)
+		auto.gaps <- which(aux > 0 & aux <= max.gap.fix)
+		if (length(auto.gaps) > 0) {
+			x$Stop[auto.gaps] <- x$Stop[auto.gaps] + aux[auto.gaps]
+			message("M: Auto-fixed ", length(auto.gaps), " gaps by extending the previous phase.")
+		}
+		attributes(x)$gaps <- which(aux > 0)
 	}
 
 	return(x)
