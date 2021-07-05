@@ -111,29 +111,38 @@ correct.meas <- function (info.data, pre.data, post.data, meas.data,
   }
 
   if(method == "linear"){
-    stop("linear has not been updated yet")
     M.phase <- levels(meas.data$Phase)
 
-    b<-NULL
-    for (i in M.phase){
-      a <- as.numeric(substr(i, 2, 3))
-      b <-append(b, a)
-    }
-    y<-NULL
-    for (i in b){
-      temp.lm1<-lm(O2.delta.raw ~ Time, data=subset(pre.data, Chamber.No=="CH1"))
-      temp.lm2<-lm(O2.delta.raw ~ Time, data=subset(post.data, Chamber.No=="CH1"))
-      pro <- (1 - i / (M.total + 1)) * temp.lm1$coefficients[2] + i / (M.total + 1) * temp.lm2$coefficients[2]
-      temp.lm1$coefficients[1] <- 0
-      temp.lm1$coefficients[2] <- pro
-      lm.M <- assign(paste("lm.M", i, sep=""),temp.lm1)
-      x<-as.vector(predict.lm(lm.M, temp.df[temp.df$Phase==paste("M", i, sep=""),], type="response", se.fit = FALSE))
-      y<-append(y, x)
-    }
-    any(y>0)
-    temp.df$O2.background <- y
-    rm(list = ls(pattern = "lm.M"))
-    rm(list = c("temp.lm1", "temp.lm2", "a", "b", "i", "x", "y", "pro"))
+    # The operation is done by phase and by chamber, so the dataset is broken twice below
+    by.chamber <- split(meas.data, meas.data$Chamber.No) # first by chamber
+
+    recipient <- lapply(names(by.chamber), function(the.chamber) { # use the chamber names so the respective pre and post data can be extracted
+
+      pre.lm <- lm(O2.delta.raw ~ Phase.Time, data = pre.data[pre.data$Chamber.No == the.chamber, ])
+      post.lm <- lm(O2.delta.raw ~ Phase.Time, data = post.data[post.data$Chamber.No == the.chamber, ])
+
+      by.phase <- split(by.chamber[[the.chamber]], by.chamber[[the.chamber]]$Phase) # now by phase
+
+      recipient <- lapply(names(by.phase), function(the.phase) { # use the phase names so the phase i can be extracted
+        phase.i <- as.numeric(gsub("(F|M)", "", the.phase))
+
+        phase.lm <- pre.lm
+
+        # adjust lm weights based on phase distance to the pre and post data
+        phase.lm$coefficients[1] <- 0
+        phase.lm$coefficients[2] <- (1 - phase.i / (M.total + 1)) * pre.lm$coefficients[2] + phase.i / (M.total + 1) * post.lm$coefficients[2]
+
+        # store values, done.
+        by.phase[[the.phase]]$O2.background <- as.vector(predict.lm(phase.lm, by.phase[[the.phase]], type = "response", se.fit = FALSE))
+
+        return(by.phase[[the.phase]])
+      })
+      # start rebinding back to a dataframe
+      output <- data.table::rbindlist(recipient)
+      return(output)
+    })
+
+    meas.data <- as.data.frame(data.table::rbindlist(recipient))
   }
 
   if(method == "exponential"){
