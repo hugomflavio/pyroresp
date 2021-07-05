@@ -36,7 +36,7 @@ load.coolterm.file <- function(file, max.gap.fix = 1) {
 
 	aux <- as.numeric(difftime(x$Start[-1], x$Stop[-nrow(x)])) - 1
 	if (any(aux > 0)) {
-		warning("Found ", sum(aux > 0), " gap(s) between phases! Maximum gap: ", max(aux), " second(s). Saving troublesome rows in attributes.", call. = FALSE, immediate. = TRUE)
+		warning("Found ", sum(aux > 0), " time gap(s) between phases! Maximum gap: ", max(aux), " second(s). Saving troublesome rows in attributes.", call. = FALSE, immediate. = TRUE)
 		auto.gaps <- which(aux > 0 & aux <= max.gap.fix)
 		if (length(auto.gaps) > 0) {
 			x$Stop[auto.gaps] <- x$Stop[auto.gaps] + aux[auto.gaps]
@@ -44,6 +44,11 @@ load.coolterm.file <- function(file, max.gap.fix = 1) {
 		}
 		attributes(x)$gaps <- which(aux > 0)
 	}
+
+	aux <- table(rle(x$Phase)$values)
+
+	if (any(aux > 1))
+		warning('There are repeated phase names in the output!', immediate. = TRUE, call. = FALSE)
 
 	return(x)
 }
