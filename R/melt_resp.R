@@ -23,7 +23,7 @@ melt_resp <- function(input, info.data) {
 	aux <- split(temp.df, paste0(temp.df$Chamber.No, temp.df$Phase))
 	aux <- lapply(aux, function(x) {
 	  x$O2.delta.raw <- x$O2.raw - x$O2.raw[1]
-	return(x)
+    return(x)
 	})
 
   output <- as.data.frame(data.table::rbindlist(aux))
