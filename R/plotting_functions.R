@@ -9,21 +9,21 @@
 #' 
 #' @export
 #' 
-plot_meas <- function(input, phases, chambers, temperature = TRUE, oxygen.label = "Oxygen") {
+plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label = "Oxygen") {
 	substrRight <- function(x, n){
 	  substr(x, nchar(x)-n+1, nchar(x))
 	}
 
-	if (!missing(phases)) {
-		if (!is.numeric(phases))
-			stop("phases must be a numeric vector")
+	if (!missing(cycles)) {
+		if (!is.numeric(cycles))
+			stop("cycles must be a numeric vector")
 
-		n.phases <- max(as.numeric(gsub("(F|M)", "", unique(input$Phase))))
+		n.cycles <- max(as.numeric(gsub("(F|M)", "", unique(input$Phase))))
 
-		if (max(phases) > n.phases)
-			stop("Requested phases go over available phases (", n.phases, ").", call. = FALSE)
+		if (max(cycles) > n.cycles)
+			stop("Requested cycles go over available cycles (", n.cycles, ").", call. = FALSE)
 		
-		phases <- as.vector(outer(c("M", "F"), phases, paste0))
+		phases <- as.vector(outer(c("M", "F"), cycles, paste0))
 		phase.string <- paste0("^", paste(phases, collapse = "$|^"), "$")
 		input <- input[grepl(phase.string, input$Phase), ]
 		input$Phase <- droplevels(input$Phase)
@@ -62,7 +62,8 @@ plot_meas <- function(input, phases, chambers, temperature = TRUE, oxygen.label 
 
 	}	else {
 		to.melt <- input[, grepl("^Date.Time$|^Phase$|^Ox.[0-9]", colnames(input))]
-		colnames(aux.ox)[grepl("value", colnames(aux.ox))] <- "Oxygen"
+		plotdata <- reshape2::melt(to.melt, id.vars = c("Phase", "Date.Time"))
+		colnames(plotdata)[grepl("value", colnames(plotdata))] <- "Oxygen"
 	}
 
 	plotdata$Chamber <- as.numeric(substrRight(as.character(plotdata$variable), 1))
@@ -85,7 +86,11 @@ plot_meas <- function(input, phases, chambers, temperature = TRUE, oxygen.label 
 		ox.range <- aux[2] - aux[1]
 		aux <- range(plotdata$Temperature)
 		temp.range <- aux[2] - aux[1]
-		compress.factor <- ox.range/temp.range
+
+		if (ox.range == 0 | temp.range == 0)
+			compress.factor <- 1
+		else
+			compress.factor <- ox.range/temp.range
 
 		data.link <- function(x, a = temp.mean, b = ox.mean, c.factor = compress.factor) {
 			b + ((x - a) * c.factor) # = y
