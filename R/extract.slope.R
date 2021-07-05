@@ -203,7 +203,7 @@ extract.slope <- function(slopes, method = c("all", "min", "max", "lower.tail", 
     return(output)
   })
 
-  good.slopes <- data.table::rbindlist(recipient)
+  good.slopes <- as.data.frame(data.table::rbindlist(recipient))
 
   good.slopes$Volume <- as.numeric(as.character(good.slopes$Volume))
   good.slopes$Mass <- as.numeric(as.character(good.slopes$Mass))
