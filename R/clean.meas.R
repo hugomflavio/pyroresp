@@ -29,7 +29,11 @@ clean.meas <- function(input, meas.to.wait = 0){
   # Removing the final measurement Phase (tail error)
   #--------------------------------------------------------------------------------------------------------------------------------------------------#
   rows.per.phase <- table(MR.data.all$Phase)
-  mean.rows.per.phase <- mean(rows.per.phase[-length(rows.per.phase)])
+
+  if (length(rows.per.phase) > 1)
+    mean.rows.per.phase <- mean(rows.per.phase[-length(rows.per.phase)])
+  else
+    mean.rows.per.phase <- rows.per.phase
   
   if (abs(tail(rows.per.phase, 1) - mean.rows.per.phase) > 1) {
     MR.data.all <- MR.data.all[MR.data.all$Phase != tail(levels(MR.data.all$Phase), 1), ]
