@@ -54,28 +54,30 @@ calculate.MR  <- function(slope.data, density = 1000, plot.BR = FALSE,
   slope.data$MR.abs = -(slope.data$Slope*V*3600)
   slope.data$MR.mass = -(slope.data$Slope*V*3600/BW)
 
-  a <- xyplot(BR~Temp|Ind, data=slope.data, as.table = T,
+  a <- xyplot(BR~Temp|ID, data=slope.data, as.table = TRUE,
               xlab = bquote("Temperature (" ~ C^o ~ ")"), ylab = "Background respiration (%)",
               main = "Percentage rate of background respiration")
-  b <- xyplot(MR.abs~Temp|Ind, data=slope.data, as.table = T,
+
+  b <- xyplot(MR.abs~Temp|ID, data=slope.data, as.table = TRUE,
               xlab = bquote("Temperature (" ~ C^o ~ ")"), ylab = bquote("Absolute MR (" ~ .(slope.data$DO.unit[1]) ~ h^-1 ~ ")"),
               main = "Absolute metabolic rate")
-  d <- xyplot(MR.mass~Temp|Ind, data=slope.data, as.table = T,
+
+  d <- xyplot(MR.mass~Temp|ID, data=slope.data, as.table = TRUE,
               xlab = bquote("Temperature (" ~ C^o ~ ")"), ylab = bquote("Mass-specific MR (" ~ .(slope.data$DO.unit[1]) ~ kg^-1 ~ h^-1 ~ ")"),
               main = "Mass-specific metabolic rate")
 
-  if (plot.BR == TRUE){
-    par(mfrow = c(2, 1), ask = T)
+  if (plot.BR){
+    par(mfrow = c(2, 1), ask = TRUE)
     print(a)
   }
 
-  if (plot.MR.abs == TRUE){
-    par(mfrow = c(2, 1), ask = T)
+  if (plot.MR.abs){
+    par(mfrow = c(2, 1), ask = TRUE)
     print(b)
   }
 
-  if (plot.MR.mass == TRUE){
-    par(mfrow = c(2, 1), ask = T)
+  if (plot.MR.mass){
+    par(mfrow = c(2, 1), ask = TRUE)
     print(d)
   }
   a <- slope.data$DO.unit[1]
