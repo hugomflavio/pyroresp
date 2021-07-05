@@ -33,13 +33,27 @@
 #'
 #' @export
 input.info <- function(ID,
+                 Chamber.No,
                  Mass,
                  Volume,
                  First.meas,
                  DO.unit = c("mg/L", "mmol/L", "ml/L")){
 
   DO.unit <- match.arg(DO.unit)
-  info.data <- data.frame(ID, Mass, Volume, First.meas, stringsAsFactors = FALSE)
+
+  if (missing(ID)) 
+    ID <- 1:length(Mass)
+  
+  if (missing(Chamber.No))
+    Chamber.No <- 1:length(Mass)
+
+  if (missing(First.meas))
+    First.meas <- 1:length(Mass)
+  
+  if (!is.numeric(Chamber.No))
+    stop('The Chamber numbers must be numeric')
+
+  info.data <- data.frame(ID, Mass, Chamber.No, Volume, First.meas, stringsAsFactors = FALSE)
 
   if(DO.unit == "mg/L"){
     DO <- "mg O2"
