@@ -32,29 +32,25 @@
 #'                    DO.unit = "mg/L")
 #'
 #' @export
-input.info <- function(ID = c(NA, NA, NA, NA, NA, NA, NA, NA),
-                 Mass = c(NA, NA, NA, NA, NA, NA, NA, NA),
-                 Volume = c(NA, NA, NA, NA, NA, NA, NA, NA),
+input.info <- function(ID,
+                 Mass,
+                 Volume,
+                 First.meas,
                  DO.unit = c("mg/L", "mmol/L", "ml/L")){
 
-  info.data <- as.data.frame(cbind(ID, Mass, Volume))
-  info.data$Mass <- as.numeric(as.character(info.data$Mass))
-  info.data$Volume <- as.numeric(as.character(info.data$Volume))
+  DO.unit <- match.arg(DO.unit)
+  info.data <- data.frame(ID, Mass, Volume, First.meas, stringsAsFactors = FALSE)
 
   if(DO.unit == "mg/L"){
     DO <- "mg O2"
   }
 
-  else if(DO.unit == "mmol/L"){
+  if(DO.unit == "mmol/L"){
     DO <- "mmol O2"
   }
 
-  else if(DO.unit == "ml/L"){
+  if(DO.unit == "ml/L"){
     DO <- "ml O2"
-  }
-
-  else{
-    print("Please, choose dissolved oxygen unit: mg/L, mmol/L or ml/L")
   }
 
   info.data$DO.unit <- as.character(DO)
