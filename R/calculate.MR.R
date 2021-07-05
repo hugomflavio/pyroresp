@@ -42,8 +42,8 @@
 #'
 #' @export
 
-calculate.MR  <- function(slope.data, density = 1000, plot.BR = TRUE,
-                          plot.MR.abs = TRUE, plot.MR.mass = TRUE){
+calculate.MR  <- function(slope.data, density = 1000, plot.BR = FALSE,
+                          plot.MR.abs = FALSE, plot.MR.mass = FALSE){
 
   BW = slope.data$Mass/1000 # convert Mass from 'g' to 'kg'
   V = slope.data$Volume/1000 - (BW/(density/1000)) #convert Volume from 'mL' to 'L' and Density from 'kg/M^3' to 'kg/L'
