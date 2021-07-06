@@ -45,14 +45,11 @@ input.info <- function(ID,
     ID <- 1:length(Mass)
   
   if (missing(Chamber.No))
-    Chamber.No <- 1:length(Mass)
+    Chamber.No <- paste0('CH', 1:length(Mass))
 
   if (missing(First.meas))
     First.meas <- 1:length(Mass)
   
-  if (!is.numeric(Chamber.No))
-    stop('The Chamber numbers must be numeric')
-
   info.data <- data.frame(ID, Mass, Chamber.No, Volume, First.meas, stringsAsFactors = FALSE)
 
   if(DO.unit == "mg/L"){
