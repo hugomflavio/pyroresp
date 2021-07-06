@@ -66,7 +66,7 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 		colnames(plotdata)[grepl("value", colnames(plotdata))] <- "Oxygen"
 	}
 
-	plotdata$Chamber <- as.numeric(substrRight(as.character(plotdata$variable), 1))
+	plotdata$Chamber <- paste0('CH', substrRight(as.character(plotdata$variable), 1))
 
 	Date.Time <- Temperature <- Oxygen <- Chamber <- NULL
 	xmin <- xmax <- ymin <- ymax <- NULL
@@ -77,6 +77,7 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 		p <- p + ggplot2::geom_rect(data = flush.times, ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "black", alpha = 0.1)
 
 	p <- p + ggplot2::geom_line(ggplot2::aes(y = Oxygen, col = oxygen.label, group = Phase))
+	p <- p + ggplot2::theme_bw()
 
 	if (temperature) {
 		ox.mean <- mean(plotdata$Oxygen)
@@ -105,15 +106,11 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 		p <- p + ggplot2::scale_colour_manual(values = c("blue", "red"))
 	} else {
 		p <- p + ggplot2::scale_colour_manual(values = "blue") 
+		p <- p + ggplot2::theme(legend.position = "none") 
 	}
 
 	p <- p + ggplot2::labs(y = oxygen.label, x = "Time")
-
 	p <- p + ggplot2::facet_wrap(Chamber ~ ., ncol = 1)
-
-	p <- p + ggplot2::theme_bw()
-
-	p
 
 	return(p)
 }
