@@ -1,5 +1,7 @@
 # FishResp: R package for Aquatic Respirometry
 
+NOTE: THIS IS A FORKED VERSION OF THE FishResp PACKAGE!
+
 ## Description
 The R package 'FishResp' is designed to calculate metabolic rate of aquatic organisms measured using an intermittent-flow respirometry approach. Raw respirometry data can be imported from:
 

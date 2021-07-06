@@ -7,8 +7,10 @@
   if(interactive()){
     pkg.version = packageDescription("FishResp", fields = "Version")
     startup.txt = paste("
+    NOTE: THIS IS A FORKED VERSION OF THE FishResp PACKAGE!
+    
     ==========================              o         #########      #
-    FishResp", pkg.version, "is loaded             o        ##########       ##
+    FishResp", pkg.version, "is loaded         o        ##########       ##
     ==========================            o     ###  #########   ###
                                             o  ####################
     For a description of its performance         #############    ##
