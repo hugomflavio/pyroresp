@@ -6,9 +6,9 @@ melt_resp <- function(input, info.data) {
     ox.cols <- colnames(input)[grepl("^Ox", colnames(input))]
     temp.cols <- colnames(input)[grepl("^Temp", colnames(input))]
   } else {
-    ox.temp.cols <- as.vector(outer(c('Temp', 'Ox'), info.data$Chamber.No, paste, sep = "."))
-    ox.cols <- paste0("Ox.", info.data$Chamber.No)
-    temp.cols <- paste0("Temp.", info.data$Chamber.No)
+    ox.temp.cols <- as.vector(outer(c('Temp', 'Ox'), sub('CH', '', info.data$Chamber.No), paste, sep = "."))
+    ox.cols <- paste0("Ox.", sub('CH', '', info.data$Chamber.No))
+    temp.cols <- paste0("Temp.", sub('CH', '', info.data$Chamber.No))
   }
 
   meas.data <- input[, c(base.cols, ox.temp.cols)]
@@ -20,13 +20,31 @@ melt_resp <- function(input, info.data) {
   if (!missing(info.data))
     temp.df <- cbind(temp.df, info.data[as.numeric(sub("CH", "", temp.df$Chamber.No)), c("ID", "Mass", "Volume")])
   
-	aux <- split(temp.df, paste0(temp.df$Chamber.No, temp.df$Phase))
-	aux <- lapply(aux, function(x) {
-	  x$O2.delta.raw <- x$O2.raw - x$O2.raw[1]
-    return(x)
-	})
+	by.chamber <- split(temp.df, temp.df$Chamber.No)
+  
+  recipient <- lapply(names(by.chamber), function(the.chamber, info.data) {
 
-  output <- as.data.frame(data.table::rbindlist(aux))
+    trimmed.db <- by.chamber[[the.chamber]]
+
+    if (!missing(info.data)) {
+      cycles <- as.numeric(sub("F|M", "", as.character(trimmed.db$Phase)))
+      first.meas <- info.data$First.meas[info.data$Chamber.No == the.chamber]
+      trimmed.db <- trimmed.db[cycles >= first.meas, ]
+    }
+
+    by.phase <- split(trimmed.db, trimmed.db$Phase)
+  	
+    recipient <- lapply(by.phase, function(the.phase) {
+  	  the.phase$O2.delta.raw <- the.phase$O2.raw - the.phase$O2.raw[1]
+      return(the.phase)
+  	})
+    
+    output <- data.table::rbindlist(recipient)
+  }, info.data = info.data)
+
+  output <- as.data.frame(data.table::rbindlist(recipient))
+
+  output$Phase <- as.character(output$Phase)
 
   if (!missing(info.data))
     output$O2.unit <- info.data$O2.unit[1]
