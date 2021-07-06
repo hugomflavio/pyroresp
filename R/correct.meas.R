@@ -3,13 +3,12 @@
 #' The function is used to correct metabolic rate measurements for background respiration. To this end, oxygen consumption is estimated as the slope of the linear regression of measured \eqn{O_{2}} concentration over time, and is extracted for background respiration test and for each measurement phase. The correction is based on subtraction of oxygen consumption obtained during background respiration test from oxygen consumption obtained during metabolic rate measurements.
 #'
 #' @usage
-#' correct.meas(info.data, pre.data, post.data, meas.data,
+#' correct.meas(pre.data, post.data, meas.data,
 #'              method = c("pre.test", "post.test", "average",
 #'                         "linear", "exponential", "parallel"),
 #'              empty.chamber = c("CH1", "CH2", "CH3", "CH4",
 #'                                "CH5", "CH6", "CH7", "CH8"))
 #'
-#' @param info.data  a data frame obtained by using the function \code{\link{input.info}}
 #' @param pre.data  a data frame obtained by using the function \code{\link{import.test}} for a blank test before actual metabolic rate measurements
 #' @param post.data  a data frame obtained by using the function \code{\link{import.test}} for a blank test after actual metabolic rate measurements
 #' @param meas.data  a data frame obtained by using the function \code{\link{import.meas}} for actual metabolic rate measurements
@@ -42,14 +41,12 @@
 #' data(AMR.raw)
 #' \dontrun{
 #' data(SMR.raw)
-#' SMR.clean <- correct.meas(info.data = info,
-#'                           pre.data = pre,
+#' SMR.clean <- correct.meas(pre.data = pre,
 #'                           meas.data = SMR.raw,
 #'                           method = "pre.test")
 #' }
 #'
-#' AMR.clean <- correct.meas(info.data = info,
-#'                           post.data = post,
+#' AMR.clean <- correct.meas(post.data = post,
 #'                           meas.data = AMR.raw,
 #'                           method = "post.test")
 #'
@@ -57,7 +54,7 @@
 #'
 #' @export
 
-correct.meas <- function (info.data, pre.data, post.data, meas.data,
+correct.meas <- function (pre.data, post.data, meas.data,
                         method = c("pre.test", "post.test", "average",
                                    "linear", "exponential", "parallel", "none"),
                         empty.chamber = c("CH1", "CH2", "CH3", "CH4",
