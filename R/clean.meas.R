@@ -52,6 +52,9 @@ clean.meas <- function(input, meas.to.wait = 0){
   row.names(MR.data.all) <- 1:nrow(MR.data.all)
 
   aux <- split(MR.data.all, MR.data.all$Phase)
+
+  aux <- aux[sapply(aux, nrow) > 0]
+  
   aux <- lapply(aux, function(x) {
     x$Phase.Time <- 1:nrow(x)
     x$Start.Meas <- x$Real.Time[1]
