@@ -1,5 +1,5 @@
 Package: FishResp
-Version: 1.1.0-9001
+Version: 1.1.0-9002
 Title: Analytical Tool for Aquatic Respirometry
 Description: [THIS IS A FORKED AND ALTERED VERSION OF FishResp!] Calculates metabolic rate of fish and other aquatic organisms measured using
              an intermittent-flow respirometry approach. The tool is used to run a set of graphical

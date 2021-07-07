@@ -103,7 +103,10 @@ load.pyroscience.workbench.file <- function(file, date.format, o2_from, o2_to) {
   return(pyro)
 }
 
-
+#' Dummy documentation
+#' 
+#' @export
+#' 
 patch.NAs <- function(input, method = c('linear', 'before', 'after')) {
   db <- input[,-1:-2]
   logical_db <- apply(db, 2, function(x) is.na(x))

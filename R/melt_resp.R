@@ -1,3 +1,7 @@
+#' Dummy documentation
+#' 
+#' @export
+#' 
 melt_resp <- function(input, info.data) {
   base.cols <- c("Date.Time", "Date", "Real.Time", "Phase.Time", "Phase", "Start.Meas", "End.Meas")
 

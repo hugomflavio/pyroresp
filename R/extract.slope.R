@@ -1,3 +1,7 @@
+#' Dummy documentation
+#' 
+#' @export
+#' 
 calc.slope <- function(input, length = Inf) {
   # The operation is done by phase and by chamber, so the dataset is broken twice below
   by.chamber <- split(input, input$Chamber.No) # first by chamber
