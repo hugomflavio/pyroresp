@@ -4,16 +4,22 @@
 \alias{plot_meas}
 \title{Plot raw measurements of oxygen and temperature}
 \usage{
-plot_meas(input, phases, temperature = TRUE, oxygen.label = "Oxygen")
+plot_meas(
+  input,
+  cycles,
+  chambers,
+  temperature = FALSE,
+  oxygen.label = "Oxygen"
+)
 }
 \arguments{
 \item{input}{A dataframe of measurements imported using one of FishResp's loading functions}
 
-\item{phases}{A vector of phases to plot (leave empty to plot all phases)}
-
 \item{temperature}{Logical: Should the temperature recordings be plotted?}
 
 \item{oxygen.label}{The label of the Oxygen axis. Defaults to "Oxygen"}
+
+\item{phases}{A vector of phases to plot (leave empty to plot all phases)}
 }
 \value{
 A ggplot object

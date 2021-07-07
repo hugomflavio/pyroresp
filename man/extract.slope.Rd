@@ -13,8 +13,6 @@ extract.slope(clean.data,
               percent = 10, p = 0.25, G = 1:4)
 }
 \arguments{
-\item{clean.data}{a data frame obtained by using the function \code{\link{correct.meas}}}
-
 \item{method}{string: the method of extracting slopes:
 \itemize{
  \item 'all' all slopes
@@ -30,8 +28,6 @@ extract.slope(clean.data,
 
 \item{r2}{numeric: minimal coefficient of determination (\eqn{r^{2}}) for extracted slopes. Coefficient of determination is used as a threshold of quality to be determined by the user (by default \eqn{r^{2}} = 0.95)}
 
-\item{length}{integer: length of a measurement period for slope calculations (in seconds; by default - full length)}
-
 \item{n.slope}{integer: the number of extracted slopes, only one slope is calculated for each measurement phase (used in the methods "min" and "max"; by default - all slopes)}
 
 \item{percent}{integer: percentage of lower or upper tail (used in the methods "lower.tail" and "upper.tail", respectively; by default percent = 10)}
@@ -39,6 +35,10 @@ extract.slope(clean.data,
 \item{p}{integer: p-value of quantile used in the method "calcSMR.quant" (by default p = 0.25)}
 
 \item{G}{integer: G value is used in the method "calcSMR.mlnd" (by default G = 1:4)}
+
+\item{clean.data}{a data frame obtained by using the function \code{\link{correct.meas}}}
+
+\item{length}{integer: length of a measurement period for slope calculations (in seconds; by default - full length)}
 }
 \value{
 The function returns a data frame with the information about extracted slopes. The data frame is used in the functions \code{\link{QC.slope}} and \code{\link{calculate.MR}}.

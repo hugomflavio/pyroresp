@@ -4,15 +4,13 @@
 \alias{correct.meas}
 \title{Correction of Metabolic Rate Measurements}
 \usage{
-correct.meas(info.data, pre.data, post.data, meas.data,
+correct.meas(pre.data, post.data, meas.data,
              method = c("pre.test", "post.test", "average",
                         "linear", "exponential", "parallel"),
              empty.chamber = c("CH1", "CH2", "CH3", "CH4",
                                "CH5", "CH6", "CH7", "CH8"))
 }
 \arguments{
-\item{info.data}{a data frame obtained by using the function \code{\link{input.info}}}
-
 \item{pre.data}{a data frame obtained by using the function \code{\link{import.test}} for a blank test before actual metabolic rate measurements}
 
 \item{post.data}{a data frame obtained by using the function \code{\link{import.test}} for a blank test after actual metabolic rate measurements}
@@ -27,6 +25,7 @@ correct.meas(info.data, pre.data, post.data, meas.data,
 \item  "linear" - subtracts a vector of progressively changing microbial consumptions from oxygen consumptions of meas.data. The values of oxygen consumption are linearly predicted from two reference points: oxygen consumption of pre.data and oxygen consumption of post.data.
 \item  "exponential" - subtracts a vector of progressively changing microbial consumptions from oxygen consumptions of meas.data. The values of oxygen consumption are exponentially predicted from two reference points: oxygen consumption of pre.data and oxygen consumption of post.data.
 \item  "parallel" - subtracts oxygen consumption in an empty chamber from oxygen consumptions of meas.data for each chamber
+\item  "none" - does not perform oxygen consumption subtraction. Not recommended for anything other than checking test data.
 }}
 
 \item{empty.chamber}{string: the name of an empty chamber used only for the method 'parallel'}
@@ -46,14 +45,12 @@ data(post)
 data(AMR.raw)
 \dontrun{
 data(SMR.raw)
-SMR.clean <- correct.meas(info.data = info,
-                          pre.data = pre,
+SMR.clean <- correct.meas(pre.data = pre,
                           meas.data = SMR.raw,
                           method = "pre.test")
 }
 
-AMR.clean <- correct.meas(info.data = info,
-                          post.data = post,
+AMR.clean <- correct.meas(post.data = post,
                           meas.data = AMR.raw,
                           method = "post.test")
 

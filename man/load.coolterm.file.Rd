@@ -4,7 +4,7 @@
 \alias{load.coolterm.file}
 \title{import flush and measurement phase times recorded by the program CoolTerm.}
 \usage{
-load.coolterm.file(file)
+load.coolterm.file(file, max.gap.fix = 1)
 }
 \arguments{
 \item{file}{The name of the file to be imported.}

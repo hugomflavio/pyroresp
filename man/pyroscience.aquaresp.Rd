@@ -4,23 +4,14 @@
 \alias{pyroscience.aquaresp}
 \title{Convert Respirometry Data from PyroScience and AquaResp Software to the FishResp Format}
 \usage{
-pyroscience.aquaresp(
-  input,
-  pyro.type = c("logger", "workbench"),
-  aquaresp,
-  n.chamber = 1:4,
-  date.format,
-  wait.phase = NA,
-  measure.phase = NA
-)
+pyroscience.aquaresp(pyroscience.file,
+                     aquaresp.file,
+                     fishresp.file,
+                     n.chamber = c(1,2,3,4),
+                     date.format = c("DMY", "MDY", "YMD"),
+                     wait.phase = NA, measure.phase = NA)
 }
 \arguments{
-\item{pyroscience.file}{the name of a file which contains raw data obtained from the 'Pyro Oxygen Logger' software (\href{https://www.pyroscience.com/}{PyroScience})}
-
-\item{aquaresp.file}{the name of a file which contains summary data obtained from the 'AquaResp' software (\href{https://www.aquaresp.com}{free software})}
-
-\item{aquaresp}{a dataframe or name of a file which contains summary data obtained from the 'AquaResp' software (\href{www.aquaresp.com}{free software})}
-
 \item{n.chamber}{integer: the number of chambers used in an experiment (including empty ones)}
 
 \item{date.format}{string: date format used in raw data obtained from the 'Pyro Oxygen Logger' software (e.g. "\%Y-\%m-\%d")}
@@ -28,6 +19,12 @@ pyroscience.aquaresp(
 \item{wait.phase}{integer: duration of the wait phase (in seconds), see the 'AquaResp' summary file (row #5)}
 
 \item{measure.phase}{integer: duration of the measure phase (in seconds), see the 'AquaResp' summary file (row #6)}
+
+\item{pyroscience.file}{the name of a file which contains raw data obtained from the 'Pyro Oxygen Logger' software (\href{https://www.pyroscience.com/}{PyroScience})}
+
+\item{aquaresp.file}{the name of a file which contains summary data obtained from the 'AquaResp' software (\href{https://www.aquaresp.com}{free software})}
+
+\item{fishresp.file}{the name of an exported file containing raw data in the 'FishResp' format}
 }
 \value{
 The function returns a data frame containing raw data in the 'FishResp' format
