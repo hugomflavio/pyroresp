@@ -12,21 +12,15 @@ load.coolterm.file <- function(file, max.gap.fix = 1) {
 	
 	phases <- as.data.frame(data.table::fread(file, tz = ""))
 	phases$V1 <- as.POSIXct(phases$V1, tz = Sys.timezone())
-	phases$V2 <- factor(phases$V2, levels = unique(phases$V2))
 
-	aux <- split(phases, phases$V2)
+	breaks <- rle(phases$V2)
+	starts <- c(1, cumsum(breaks$lengths) + 1)
+	starts <- starts[-length(starts)]
+	stops <- cumsum(breaks$lengths)
 
-	x <- lapply(aux, function(x) {
-		data.frame(Start = x$V1[1], Stop = x$V1[nrow(x)])
-	})
-
-	x <- as.data.frame(data.table::rbindlist(x))
-	x$Phase <- names(aux)
-	x <- x[, c("Phase", "Start", "Stop")]
-
-	substrRight <- function(x, n){
-	  substr(x, nchar(x)-n+1, nchar(x))
-	}
+	x <- data.frame(Phase = breaks$values,
+			   Start = phases$V1[starts],
+			   Stop = phases$V1[stops])
 
 	if (any(check <- x$Start[-1] <= x$Stop[-nrow(x)])) {
 		maxoverlap <- max(as.numeric(difftime(x$Start[which(check) + 1], x$Stop[check])) + 1)

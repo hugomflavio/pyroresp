@@ -56,9 +56,10 @@ clean.meas <- function(input, meas.to.wait = 0){
   aux <- aux[sapply(aux, nrow) > 0]
   
   aux <- lapply(aux, function(x) {
-    x$Phase.Time <- 1:nrow(x)
     x$Start.Meas <- x$Real.Time[1]
     x$End.Meas <- x$Real.Time[nrow(x)]
+    x$Phase.Time <- as.numeric(difftime(x$Date.Time, x$Date.Time[1], units = 's'))
+
     return(x)
   })
   MR.data.all <- as.data.frame(data.table::rbindlist(aux))

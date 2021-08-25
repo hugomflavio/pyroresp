@@ -1,3 +1,37 @@
+calc.mean.slope <- function(x) {
+  by.chamber <- split(x, x$Chamber.No)
+
+  recipient <- lapply(by.chamber, function(the.chamber) {
+
+    by.phase <- split(the.chamber, the.chamber$Phase)
+
+    # Some phases may have an extra second, so we grab the smallest phase, to avoid NAs
+    rows.per.phase <- min(sapply(by.phase, function(x) max(x$Phase.Time)))
+
+    # extract times to confirm they match
+    Phase.Time.list <- lapply(by.phase, function(x) x$Phase.Time[1:rows.per.phase])
+    Phase.Time.df <- as.data.frame(Phase.Time.list)
+    Phase.Time.df$Check <- apply(Phase.Time.df, 1, function(r) length(unique(r)) == 1)
+    if (!all(Phase.Time.df$Check))
+      stop('There is a mismatch on the phase times of the pre/post data.', call. = FALSE)
+
+    # now extract the O2 values and calculate the mean
+    O2.delta.raw.list <- lapply(by.phase, function(x) x$O2.delta.raw[1:rows.per.phase])
+    O2.delta.raw.df <- as.data.frame(O2.delta.raw.list)
+    O2.delta.raw.df$Mean <- apply(O2.delta.raw.df, 1, mean)
+
+    # bind and return
+    output <- cbind(Phase.Time = Phase.Time.df[, 1], O2.delta.raw.df)
+    return(output)
+  })
+
+  # now combine all chambers as in the original input
+  output <- as.data.frame(data.table::rbindlist(recipient, idcol = 'Chamber.No'))
+
+  return(output)
+}
+
+
 #' Correction of Metabolic Rate Measurements
 #'
 #' The function is used to correct metabolic rate measurements for background respiration. To this end, oxygen consumption is estimated as the slope of the linear regression of measured \eqn{O_{2}} concentration over time, and is extracted for background respiration test and for each measurement phase. The correction is based on subtraction of oxygen consumption obtained during background respiration test from oxygen consumption obtained during metabolic rate measurements.
@@ -53,30 +87,53 @@
 #' @references {Svendsen, M. B. S., Bushnell, P. G., & Steffensen, J. F. (2016). Design and setup of intermittent-flow respirometry system for aquatic organisms. Journal of Fish Biology, 88(1), 26-50.}
 #'
 #' @export
-
+#'
 correct.meas <- function (pre.data, post.data, meas.data,
                         method = c("pre.test", "post.test", "average",
                                    "linear", "exponential", "parallel", "none"),
+                        pre.bg.meas = c('mean', 'first', 'last'),
+                        post.bg.meas = c('mean', 'first', 'last'),
                         empty.chamber = c("CH1", "CH2", "CH3", "CH4",
                                           "CH5", "CH6", "CH7", "CH8")){
 
   method <- match.arg(method)
+  pre.bg.meas <- match.arg(pre.bg.meas)
+  post.bg.meas <- match.arg(post.bg.meas)
 
   M.total <- max(as.numeric(gsub("(F|M)", "", unique(meas.data$Phase))))
 
   if(method == "pre.test"){
-    stop("pre.test has not been updated yet")
-    temp.lm<-lm(O2.delta.raw ~ Phase.Time, data=subset(pre.data, Chamber.No=="CH1"))
-    temp.lm$coefficients[1] <- 0
-    x<-as.vector(predict.lm(temp.lm, temp.df, type="response", se.fit=F))
-    any(x>0)
-    temp.df$O2.background <- x
-    rm(x)
-    rm(temp.lm)
+    all.meas <- unique(post.data$Phase)
+
+    if (pre.bg.meas == 'first')
+      pre.data <- pre.data[pre.data$Phase == all.meas[1], ]
+      
+    if (pre.bg.meas == 'last')
+      pre.data <- pre.data[pre.data$Phase == all.meas[length(all.meas)], ]
+
+    aux <- split(meas.data, meas.data$Chamber.No)
+
+    if (any(is.na(match(names(aux), unique(pre.data$Chamber.No)))))
+      stop("Background data is missing for some chambers")
+
+    aux <- lapply(1:length(aux), function(i) {
+      temp.lm <- lm(O2.delta.raw ~ Phase.Time, data = pre.data[pre.data$Chamber.No == names(aux)[i], ])
+      temp.lm$coefficients[1] <- 0 
+      aux[[i]]$O2.background <- as.vector(predict.lm(temp.lm, aux[[i]], type = "response", se.fit = FALSE))
+      return(aux[[i]])
+    })
+
+    meas.data <- as.data.frame(data.table::rbindlist(aux))
   }
 
   if(method == "post.test"){
-    post.data <- post.data[post.data$Phase == "M1", ]
+    all.meas <- unique(post.data$Phase)
+
+    if (post.bg.meas == 'first')
+      post.data <- post.data[post.data$Phase == all.meas[1], ]
+      
+    if (post.bg.meas == 'last')
+      post.data <- post.data[post.data$Phase == all.meas[length(all.meas)], ]
 
     aux <- split(meas.data, meas.data$Chamber.No)
 
@@ -91,6 +148,12 @@ correct.meas <- function (pre.data, post.data, meas.data,
     })
 
     meas.data <- as.data.frame(data.table::rbindlist(aux))
+
+    # p <- ggplot(data = meas.data, aes(x = Phase.Time))
+    # p <- p + geom_line(aes(y = O2.delta.raw), colour = 'blue')
+    # p <- p + geom_line(aes(y = O2.background), colour = 'red')
+    # p <- p + facet_wrap(. ~ Chamber.No)
+    # p
   }
 
   if(method == "average"){
@@ -108,6 +171,22 @@ correct.meas <- function (pre.data, post.data, meas.data,
   }
 
   if(method == "linear"){
+    all.meas <- unique(post.data$Phase)
+
+    if (pre.bg.meas == 'first')
+      pre.data <- pre.data[pre.data$Phase == all.meas[1], ]
+      
+    if (pre.bg.meas == 'last')
+      pre.data <- pre.data[pre.data$Phase == all.meas[length(all.meas)], ]
+
+
+    if (post.bg.meas == 'first')
+      post.data <- post.data[post.data$Phase == all.meas[1], ]
+      
+    if (post.bg.meas == 'last')
+      post.data <- post.data[post.data$Phase == all.meas[length(all.meas)], ]
+
+
     M.phase <- levels(meas.data$Phase)
 
     # The operation is done by phase and by chamber, so the dataset is broken twice below
@@ -183,6 +262,8 @@ correct.meas <- function (pre.data, post.data, meas.data,
   })
 
   output <- as.data.frame(data.table::rbindlist(aux))
+  
+  attributes(output)$correction_method <- method
   
   return(output)
 }

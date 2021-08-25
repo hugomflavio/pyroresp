@@ -21,8 +21,10 @@ melt_resp <- function(input, info.data) {
   temp.df$Chamber.No <- paste0("CH", sub("Ox.", "", temp.df$Chamber.No))
   temp.df$Temp <- reshape2::melt(meas.data, id.vars = NULL, measure.vars = temp.cols)$value
 
-  if (!missing(info.data))
-    temp.df <- cbind(temp.df, info.data[as.numeric(sub("CH", "", temp.df$Chamber.No)), c("ID", "Mass", "Volume")])
+  if (!missing(info.data)) {
+    link <- match(temp.df$Chamber.No, info.data$Chamber.No)
+    temp.df <- cbind(temp.df, info.data[link, c("ID", "Mass", "Volume")])
+  }
   
 	by.chamber <- split(temp.df, temp.df$Chamber.No)
   

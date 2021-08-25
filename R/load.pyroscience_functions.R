@@ -13,7 +13,7 @@ load.pyroscience.logger.file <- function(file, n.chamber = 1:4, date.format) {
   #       Would need an example to verify.
   n.chamber <- match.arg(n.chamber)
 
-  if (!file.exists(file))
+  if (length(file) == 0 || !file.exists(file))
     stop("Could not find target file.", call. = FALSE)
 
   column.vector <- c(1, 2, 9, 5, 10, 6, 11, 7, 12, 8)[1:(2 + 2 * n.chamber)]
@@ -184,3 +184,54 @@ check.pyrocience.data <- function(x) {
   return(x[, column.names[1:ncol(x)]])
 }
 
+
+
+
+#' Load a single channel file
+#' 
+#' @param file the input file
+#' 
+#' @return the imported channel file
+#' 
+#' @export
+#' 
+load.pyroscience.o2.file <- function(file) {
+  if (length(file) == 0 || !file.exists(file))
+    stop("Could not find target file.", call. = FALSE)
+
+  aux <- utils::read.table(file, sep = "\t", skip = 24, header = FALSE, strip.white = TRUE)
+
+  a <- gsub(" .*$", "", aux[1,])
+
+  b <- gsub("^.* ", "", aux[1,])
+  b <- gsub(']', '', b)
+
+  output <- utils::read.table(file, sep = "\t", skip = 25, header = FALSE, strip.white = TRUE)
+
+  colnames(output) <- paste0(a, '.', b)
+
+  return(output)
+}
+
+#' Load a single channel file
+#' 
+#' @param file the input file
+#' 
+#' @return the imported channel file
+#' 
+#' @export
+#' 
+load.pyroscience.temp.file <- function(file, date.format, tz = Sys.timezone()) {
+  if (length(file) == 0 || !file.exists(file))
+    stop("Could not find target file.", call. = FALSE)
+
+  output <- utils::read.table(file, sep = "\t", skip = 12, header = FALSE, strip.white = TRUE)
+
+  colnames(output) <- c('Date', 'Time', 'ds', 'Temp', 'Status')
+
+  output$Date.Time <- as.POSIXct(paste(output$Date, output$Time), format = paste(date.format, "%H:%M:%S"), tz = tz)
+
+  output <- output[, c('Date.Time', 'ds', 'Temp', 'Status')]
+
+  return(output)
+}

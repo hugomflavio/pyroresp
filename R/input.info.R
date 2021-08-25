@@ -48,7 +48,7 @@ input.info <- function(ID,
     Chamber.No <- paste0('CH', 1:length(Mass))
 
   if (missing(First.meas))
-    First.meas <- 1:length(Mass)
+    First.meas <- rep(1, length(Mass))
   
   info.data <- data.frame(ID, Mass, Chamber.No, Volume, First.meas, stringsAsFactors = FALSE)
 
