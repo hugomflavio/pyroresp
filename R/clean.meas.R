@@ -20,6 +20,8 @@ clean.meas <- function(input, meas.to.wait = 0){
   MR.data.all <- MR.data.all[grepl("^M", MR.data.all$Phase), ]
   
   phase.order <- as.numeric(gsub("[M]", "", unique(MR.data.all$Phase)))
+
+  phase.order <- phase.order - min(phase.order) + 1
   
   MR.data.all$Phase <- factor(MR.data.all$Phase, levels = unique(MR.data.all$Phase)[phase.order])
 
