@@ -11,10 +11,6 @@ correct.meas(pre.data, post.data, meas.data,
                                "CH5", "CH6", "CH7", "CH8"))
 }
 \arguments{
-\item{pre.data}{a data frame obtained by using the function \code{\link{import.test}} for a blank test before actual metabolic rate measurements}
-
-\item{post.data}{a data frame obtained by using the function \code{\link{import.test}} for a blank test after actual metabolic rate measurements}
-
 \item{meas.data}{a data frame obtained by using the function \code{\link{import.meas}} for actual metabolic rate measurements}
 
 \item{method}{string: the name of the method used for background respiration correction:
@@ -29,6 +25,10 @@ correct.meas(pre.data, post.data, meas.data,
 }}
 
 \item{empty.chamber}{string: the name of an empty chamber used only for the method 'parallel'}
+
+\item{pre.data}{a data frame obtained by using the function \code{\link{import.test}} for a blank test before actual metabolic rate measurements}
+
+\item{post.data}{a data frame obtained by using the function \code{\link{import.test}} for a blank test after actual metabolic rate measurements}
 }
 \value{
 The function returns a data frame containing data of metabolic rate measurements corrected for background respiration. The data frame is used in the functions \code{\link{QC.meas}}, \code{\link{QC.activity}},\cr \code{\link{extract.slope}} and \code{\link{QC.slope}}.
