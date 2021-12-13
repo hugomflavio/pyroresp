@@ -233,7 +233,10 @@ correct.meas <- function (pre.bg, post.bg, meas.data,
 
 
 
-
+#' dummy doc
+#' 
+#' @export
+#' 
 calculate.bg <- function(input, method = c('mean', 'first', 'last'), force.linear = TRUE, smoothing = 30){
 
   method <- match.arg(method)
@@ -296,7 +299,10 @@ calculate.bg <- function(input, method = c('mean', 'first', 'last'), force.linea
 
 
 
-
+#' dummy doc
+#' 
+#' @export
+#' 
 plot_bg <- function(obs, bg, mean.lwd = 1.5) {
   p <- ggplot(data = obs, aes(x = Phase.Time))
   p <- p + geom_line(aes(y = O2.delta.raw, group = Phase, colour = Phase))
