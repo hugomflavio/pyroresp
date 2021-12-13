@@ -2,7 +2,7 @@
 #' 
 #' @export
 #' 
-calc.slope <- function(input, length = Inf) {
+calc.slope <- function(input, max.length = Inf) {
   # The operation is done by phase and by chamber, so the dataset is broken twice below
   by.chamber <- split(input, input$Chamber.No) # first by chamber
 
@@ -10,7 +10,7 @@ calc.slope <- function(input, length = Inf) {
     by.phase <- split(the.chamber, the.chamber$Phase) # now by phase
 
     recipient <- lapply(by.phase, function(the.phase) {
-      trimmed.phase <- the.phase[the.phase$Phase.Time <= length, ]
+      trimmed.phase <- the.phase[the.phase$Phase.Time <= max.length, ]
 
       model.with.BR <- lm(O2.raw ~ Phase.Time, data = trimmed.phase)
 
@@ -118,6 +118,7 @@ extract.slope <- function(slopes, method = c("all", "min", "max", "lower.tail", 
   
   by.chamber <- split(slopes, slopes$Chamber.No)
 
+  issue.low.sample.size.warning <- TRUE
   recipient <- lapply(by.chamber, function(the.chamber) {
     if(method == "all"){
       s <- order(the.chamber$Slope)
@@ -171,38 +172,54 @@ extract.slope <- function(slopes, method = c("all", "min", "max", "lower.tail", 
       output$Slope <- rate
     }
     if (method == "calcSMR.low10"){
-      u <- sort(the.chamber$Slope, decreasing = TRUE)
-      max.low10 <- max(u[1:10])
-      min.low10 <- min(u[1:10])
-      low10 <- mean(u[1:10])
-      s <- as.numeric(low10)
+      aux <- the.chamber[order(the.chamber$Slope, decreasing = TRUE),]
+
+      if (nrow(aux) >= 10) {
+        aux <- aux[1:10, ]
+      } else {
+        warning('The input does not have 10 or more slopes. Using all.', .immediate = TRUE)
+      }
 
       output <- the.chamber[1,]
-      output$Date.Time <- NA
-      output$Phase <- NA
-      output$Temp <- mean(the.chamber$Temp[the.chamber$Slope >= min.low10])
-      output$Slope.with.BR <- mean(the.chamber$Slope.with.BR[the.chamber$Slope >= min.low10])
-      output$Slope <- s
-      output$SE <- NA
-      output$R2 <- mean(the.chamber$R2[the.chamber$Slope >= min.low10])
+      output$Date.Time <- NULL
+      output$Phase <- NULL
+      output$Temp <- mean(aux$Temp)
+      output$Slope.with.BR <- mean(aux$Slope.with.BR)
+      output$Slope <- mean(aux$Slope)
+      output$SE <- NULL
+      output$R2 <- mean(aux$R2)
     }
     if (method == "calcSMR.low10pc"){
-      u <- sort(the.chamber$Slope, decreasing = TRUE)
-      max.low10pc <- max(u[6:10])
-      min.low10pc <- min(u[6:10])
-      low10pc <- mean(u[6:(5 + round(0.1 * (length(u) - 5)))])
-      s <- as.numeric(low10pc)
-      u.BR <- the.chamber$Slope.with.BR[the.chamber$Slope >= min.low10pc]
-      low10pc.BR <- mean(u.BR[6:(5 + round(0.1*(length(u.BR)-5)))])
-      s.BR <- as.numeric(low10pc.BR)
+      aux <- the.chamber[order(the.chamber$Slope, decreasing = TRUE),]
+
+      if (nrow(aux) > 5) { # drop the lowest five values to avoid outlier effects
+        aux <- aux[-(1:5), ]
+      } else {
+        if (issue.low.sample.size.warning) {
+          warning('The calcSMR.low10pc method does not work well with less than 15 measurements (optimally at least 25).', immediate. = TRUE, call. = FALSE)
+          issue.low.sample.size.warning <<- FALSE
+        }
+        aux <- aux[1, , drop = FALSE]
+      }
+
+      if (nrow(aux) >= 10) { # extract the 10% lowest
+        aux <- aux[1:round(nrow(aux)/10), ]
+      } else {
+        if (issue.low.sample.size.warning) {
+          warning('The calcSMR.low10pc method does not work well with less than 15 measurements (optimally at least 25).', immediate. = TRUE, call. = FALSE)
+          issue.low.sample.size.warning <<- FALSE
+        }
+        aux <- aux[1, , drop = FALSE]
+      }
+
       output <- the.chamber[1,]
-      output$Date.Time <- NA
-      output$Phase <- NA
-      output$Temp <- mean(the.chamber$Temp[the.chamber$Slope <= max.low10pc & the.chamber$Slope >= min.low10pc])
-      output$Slope.with.BR <- s.BR
-      output$Slope <- s
-      output$SE <- NA
-      output$R2 <- mean(the.chamber$R2[the.chamber$Slope <= max.low10pc & the.chamber$Slope >= min.low10pc ])
+      output$Date.Time <- NULL
+      output$Phase <- NULL
+      output$Temp <- mean(aux$Temp)
+      output$Slope.with.BR <- mean(aux$Slope.with.BR)
+      output$Slope <- mean(aux$Slope)
+      output$SE <- NULL
+      output$R2 <- mean(aux$R2)
     }
     return(output)
   })
@@ -212,6 +229,8 @@ extract.slope <- function(slopes, method = c("all", "min", "max", "lower.tail", 
   good.slopes$Volume <- as.numeric(as.character(good.slopes$Volume))
   good.slopes$Mass <- as.numeric(as.character(good.slopes$Mass))
   good.slopes$DO.unit <- slopes$DO.unit[1]
+
+  attributes(good.slopes)$selection.method <- method
 
   return(good.slopes)
 }

@@ -2,8 +2,24 @@
 #' 
 #' @export
 #' 
-plot_mr <- function(MR, SMR, MMR, chambers, target_col = 'MR.mass', ylabel = expression(paste("MR (", mg~O[2]~kg^-1~h^-1, ")"))) {
+plot_mr <- function(MR, SMR = NULL, MMR = NULL, cycles, chambers, target_col = 'MR.mass', ylabel = expression(paste("MR (", mg~O[2]~kg^-1~h^-1, ")"))) {
 	MR$y_column <- MR[, target_col]
+
+	if (!missing(cycles)) {
+		if (!is.numeric(cycles))
+			stop("cycles must be a numeric vector")
+
+		n.cycles <- max(as.numeric(gsub("(F|M)", "", unique(MR$Phase))))
+
+		if (max(cycles) > n.cycles)
+			stop("Requested cycles go over available cycles (", n.cycles, ").", call. = FALSE)
+		
+		phases <- as.vector(outer(c("M", "F"), cycles, paste0))
+		phase.string <- paste0("^", paste(phases, collapse = "$|^"), "$")
+		MR <- MR[grepl(phase.string, MR$Phase), ]
+		# MR$Phase <- droplevels(MR$Phase)
+		rm(phases, phase.string)
+	}
 
 	if (!missing(chambers)) {
 		if (is.numeric(chambers))
@@ -15,15 +31,17 @@ plot_mr <- function(MR, SMR, MMR, chambers, target_col = 'MR.mass', ylabel = exp
 	p <- ggplot2::ggplot(data = MR, ggplot2::aes(x = Date.Time, y = y_column))
 	p <- p + ggplot2::geom_line()
 	p <- p + ggplot2::geom_point()
-	if (!missing(SMR)) {
+
+	if (!is.null(SMR)) {
 		SMR$y_column <- SMR[, target_col]
 		
-		if (!missing(chambers))
+		if (!missing(chambers)) 
 			SMR <- SMR[SMR$Chamber.No %in% chambers, ]
 
 		p <- p + ggplot2::geom_hline(data = SMR, ggplot2::aes(yintercept = y_column), col = "red")
 	}
-	if (!missing(MMR)) {
+	
+	if (!is.null(MMR)) {
 		MMR$y_column <- MMR[, target_col]		
 		
 		if (!missing(chambers)) {			
@@ -32,6 +50,7 @@ plot_mr <- function(MR, SMR, MMR, chambers, target_col = 'MR.mass', ylabel = exp
 
 		p <- p + ggplot2::geom_point(data = MMR, ggplot2::aes(x = Date.Time, y = y_column), col = "red", size = 2)
 	}
+	
 	p <- p + ggplot2::facet_wrap(Chamber.No ~ ., ncol = 1)
 	p <- p + ggplot2::labs(y = ylabel, x = '')
 	p <- p + ggplot2::theme_bw()
@@ -43,7 +62,23 @@ plot_mr <- function(MR, SMR, MMR, chambers, target_col = 'MR.mass', ylabel = exp
 #' 
 #' @export
 #' 
-plot_slopes <- function(input, chambers, r2 = TRUE) {
+plot_slopes <- function(input, cycles, chambers, r2 = TRUE) {
+	if (!missing(cycles)) {
+		if (!is.numeric(cycles))
+			stop("cycles must be a numeric vector")
+
+		n.cycles <- max(as.numeric(gsub("(F|M)", "", unique(input$Phase))))
+
+		if (max(cycles) > n.cycles)
+			stop("Requested cycles go over available cycles (", n.cycles, ").", call. = FALSE)
+		
+		phases <- as.vector(outer(c("M", "F"), cycles, paste0))
+		phase.string <- paste0("^", paste(phases, collapse = "$|^"), "$")
+		input <- input[grepl(phase.string, input$Phase), ]
+		# input$Phase <- droplevels(input$Phase)
+		rm(phases, phase.string)
+	}
+
 	if (!missing(chambers)) {
 		if (is.numeric(chambers))
 			chambers <- paste0('CH', chambers)
@@ -251,3 +286,55 @@ plot_deltas <- function(input, cycles, chambers) {
 				  colour = 'Values:', linetype = 'Values:')
 	p
 }
+
+
+#' dummy documentation
+#' 
+#' plots the whole experiment data, from background to MO2
+#' 
+#' @export
+#' 
+plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = FALSE, 
+							title = 'Experiment measurements', oxygen.label = 'O2',
+							mr.col = 'MR.mass', mr.label = 'MO2') {
+
+	if (!missing(pre))
+		p_pre <- plot_meas(pre$phased, oxygen.label = oxygen.label, cycles = cycles, chambers = chamber, temperature = TRUE) + labs(title = 'Pre-background')
+	else
+		p_pre <- wrap_elements(grid::textGrob('Pre-background was not recorded'))
+	
+	if (!missing(post))
+		p_post <- plot_meas(post$phased, oxygen.label = oxygen.label, cycles = cycles, chambers = chamber, temperature = TRUE) + labs(title = 'Post-background')
+	else
+		p_post <- wrap_elements(grid::textGrob('Post-background was not recorded'))
+
+	p1 <- plot_meas(mr$phased, oxygen.label = oxygen.label, cycles = cycles, chamber = chamber, temperature = TRUE) 
+	p1 <- p1 + labs(title = title, x = '')
+	
+	B <- plot_deltas(mr$corrected, cycles = cycles, chambers = i) + mimic_x(p1)
+
+	p2 <- plot_slopes(mr$all.slopes, cycles = cycles, chambers = i) + mimic_x(p1) + xlab('')
+
+	if (smr)
+		the_smr <- mr$smr
+	else
+		the_smr <- NULL
+
+	if (mmr)
+		the_mmr <- mr$mmr
+	else
+		the_mmr <- NULL
+
+	p3 <- plot_mr(MR = mr$mr, SMR = the_smr, MMR = the_mmr, chambers = i, 
+		  target_col = mr.col, ylabel = mr.label)
+	p3 <- p3 + mimic_x(p1)
+
+	to.print <- p_pre + p_post + p1 + B + p2 + p3 + plot_layout(design = 'AB\nCC\nDD\nEE\nFF')
+
+	return(to.print)
+}
+
+mimic_x <- function(input) {
+	ggplot2::xlim(as.POSIXct(ggplot2::layer_scales(input)$x$range$range, origin = "1970-01-01 00:00.00"))	
+}
+

@@ -1,13 +1,13 @@
 #' Prepare imported measurements for further analyses
 #' 
 #' @param input the data frame containing imported oxygen measurements
-#' @param meas.to.wait integer: the number of first rows for each measurement phase (M) which should be reassigned to the wait phase (W). The parameter should be used when the wait phase (W) is absent (e.g. in 'Q-box Aqua' logger software) or not long enough to eliminate non-linear change in DO concentration over time from the measurement phase (M) after shutting off water supply from the ambient water source.
+#' @param wait integer: the number of first rows for each measurement phase (M) which should be reassigned to the wait phase (W). The parameter should be used when the wait phase (W) is absent (e.g. in 'Q-box Aqua' logger software) or not long enough to eliminate non-linear change in DO concentration over time from the measurement phase (M) after shutting off water supply from the ambient water source.
 #' 
 #' @return A data.frame containing measurements valid for further analyses
 #' 
 #' @export
 #' 
-clean.meas <- function(input, meas.to.wait = 0){
+clean.meas <- function(input, wait = 0, auto.cut.last = FALSE){
 
   MR.data.all <- input  
   MR.data.all$Date <- as.Date(MR.data.all$Date.Time)
@@ -37,7 +37,7 @@ clean.meas <- function(input, meas.to.wait = 0){
   else
     mean.rows.per.phase <- rows.per.phase
   
-  if (abs(tail(rows.per.phase, 1) - mean.rows.per.phase) > 1) {
+  if (tail(rows.per.phase, 1) < wait | auto.cut.last) {
     MR.data.all <- MR.data.all[MR.data.all$Phase != tail(levels(MR.data.all$Phase), 1), ]
     MR.data.all$Phase <- droplevels(MR.data.all$Phase)
   }
@@ -45,8 +45,8 @@ clean.meas <- function(input, meas.to.wait = 0){
   rm(rows.per.phase, mean.rows.per.phase)
 
   # cut off first n rows from 'M' phase
-  if(meas.to.wait != 0){
-    idx <- unlist(tapply(1:nrow(MR.data.all), MR.data.all$Phase, tail, -(meas.to.wait)), use.names=FALSE)
+  if(wait != 0){
+    idx <- unlist(tapply(1:nrow(MR.data.all), MR.data.all$Phase, tail, -(wait)), use.names=FALSE)
     MR.data.all <- MR.data.all[idx, ]
     rm(idx)
   }

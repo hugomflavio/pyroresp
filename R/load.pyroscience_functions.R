@@ -195,7 +195,7 @@ check.pyrocience.data <- function(x) {
 #' 
 #' @export
 #' 
-load.pyroscience.o2.file <- function(file) {
+load.pyroscience.o2.file <- function(file, date.format, tz = Sys.timezone()) {
   if (length(file) == 0 || !file.exists(file))
     stop("Could not find target file.", call. = FALSE)
 
@@ -209,6 +209,8 @@ load.pyroscience.o2.file <- function(file) {
   output <- utils::read.table(file, sep = "\t", skip = 25, header = FALSE, strip.white = TRUE)
 
   colnames(output) <- paste0(a, '.', b)
+
+  output$Date.Time <- as.POSIXct(paste(output$Date.Main, output$Time.Main), format = paste(date.format, "%H:%M:%S"), tz = tz)
 
   return(output)
 }
@@ -235,3 +237,73 @@ load.pyroscience.temp.file <- function(file, date.format, tz = Sys.timezone()) {
 
   return(output)
 }
+
+
+
+
+#' dummy documentation
+#' 
+#' scan a target folder for a coolterm file and a pyroscience experiment file. import them.
+#' 
+#' @export
+#' 
+load_pyro_files <- function(folder) {
+  if (!dir.exists(folder))
+    stop('Could not find target folder')
+
+  aux <- paste0(folder, "/", list.files(folder)[grepl(".txt", list.files(folder))])
+  
+  coolterm_file <- aux[grepl("CoolTerm", aux)]
+  
+  if (length(coolterm_file) == 0)
+    stop('Could not find coolterm file')
+
+  pyro_file <- aux[!grepl("CoolTerm", aux)]
+  
+  if (length(pyro_file) == 0)
+    stop('could not find pyro file')
+
+  if (length(pyro_file) > 1)
+    stop('could not identify pyro file. too many txt files in folder?')
+
+  output <- list()
+
+  output$coolterm <- load.coolterm.file(coolterm_file)
+  output$pyro <- load.pyroscience.workbench.file(pyro_file, date.format = "%d-%m-%Y")
+  return(output)
+}
+
+#' dummy documentation
+#' 
+#' perform standard processing operations to the pyro/coolterm files
+#' 
+#' @export
+#' 
+process_pyro_files <- function(input, wait, chamber.info) {
+  input$pyro <- patch.NAs(input$pyro, method = "linear")
+  input$phased <- merge_pyroscience_coolterm(input$pyro, input$coolterm)
+  input$phased <- input$phased[!is.na(input$phased$Phase),]
+  input$meas <- clean.meas(input = input$phased, wait = wait)
+  input$meas <- melt_resp(input$meas, chamber.info) 
+  return(input)
+}
+
+#' dummy documentation
+#' 
+#' perform standard metabolic rate calculations in pyro datasets
+#' 
+#' @export
+#' 
+process_pyro_mr <- function(input, r2, smr.method = "calcSMR.low10pc") {
+  input$all.slopes <- calc.slope(input$corrected)
+  input$good.slopes <- extract.slope(input$all.slopes, r2 = r2)
+  input$smr.slope <- extract.slope(input$good.slopes, method = smr.method, r2 = r2)
+  input$mmr.slope <- extract.slope(input$good.slopes, method = "max", r2 = r2, n.slope = 1)
+
+  input$mr <- calculate.MR(input$good.slopes)
+  input$smr <- calculate.MR(input$smr.slope)
+  input$mmr <- calculate.MR(input$mmr.slope)
+  return(input)
+}
+
+

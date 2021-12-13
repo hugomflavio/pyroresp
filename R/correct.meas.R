@@ -88,106 +88,69 @@ calc.mean.slope <- function(x) {
 #'
 #' @export
 #'
-correct.meas <- function (pre.data, post.data, meas.data,
+correct.meas <- function (pre.bg, post.bg, meas.data,
                         method = c("pre.test", "post.test", "average",
                                    "linear", "exponential", "parallel", "none"),
-                        pre.bg.meas = c('mean', 'first', 'last'),
-                        post.bg.meas = c('mean', 'first', 'last'),
                         empty.chamber = c("CH1", "CH2", "CH3", "CH4",
                                           "CH5", "CH6", "CH7", "CH8")){
 
   method <- match.arg(method)
-  pre.bg.meas <- match.arg(pre.bg.meas)
-  post.bg.meas <- match.arg(post.bg.meas)
 
   M.total <- max(as.numeric(gsub("(F|M)", "", unique(meas.data$Phase))))
 
   if(method == "pre.test"){
-    all.meas <- unique(post.data$Phase)
 
-    if (pre.bg.meas == 'first')
-      pre.data <- pre.data[pre.data$Phase == all.meas[1], ]
+    O2.background <- sapply(1:nrow(meas.data), function(i) {
+      row <- which(pre.bg$Chamber.No == meas.data$Chamber.No[i] & pre.bg$Phase.Time == meas.data$Phase.Time[i])
       
-    if (pre.bg.meas == 'last')
-      pre.data <- pre.data[pre.data$Phase == all.meas[length(all.meas)], ]
-
-    aux <- split(meas.data, meas.data$Chamber.No)
-
-    if (any(is.na(match(names(aux), unique(pre.data$Chamber.No)))))
-      stop("Background data is missing for some chambers")
-
-    aux <- lapply(1:length(aux), function(i) {
-      temp.lm <- lm(O2.delta.raw ~ Phase.Time, data = pre.data[pre.data$Chamber.No == names(aux)[i], ])
-      temp.lm$coefficients[1] <- 0 
-      aux[[i]]$O2.background <- as.vector(predict.lm(temp.lm, aux[[i]], type = "response", se.fit = FALSE))
-      return(aux[[i]])
+      if (length(row) == 0)
+        return(NA)
+      else
+        return(pre.bg$O2.background[row])
     })
 
-    meas.data <- as.data.frame(data.table::rbindlist(aux))
+    if (any(is.na(O2.background)))
+      warning('Some measurement phases are longer than the background. Discarding overextended points', immediate. = TRUE, call. = FALSE)
+
+    meas.data$O2.background <- O2.background
+    meas.data <- meas.data[!is.na(O2.background), ]
   }
 
   if(method == "post.test"){
-    all.meas <- unique(post.data$Phase)
 
-    if (post.bg.meas == 'first')
-      post.data <- post.data[post.data$Phase == all.meas[1], ]
+    O2.background <- sapply(1:nrow(meas.data), function(i) {
+      row <- which(post.bg$Chamber.No == meas.data$Chamber.No[i] & post.bg$Phase.Time == meas.data$Phase.Time[i])
       
-    if (post.bg.meas == 'last')
-      post.data <- post.data[post.data$Phase == all.meas[length(all.meas)], ]
-
-    aux <- split(meas.data, meas.data$Chamber.No)
-
-    if (any(is.na(match(names(aux), unique(post.data$Chamber.No)))))
-      stop("Background data is missing for some chambers")
-
-    aux <- lapply(1:length(aux), function(i) {
-      temp.lm <- lm(O2.delta.raw ~ Phase.Time, data = post.data[post.data$Chamber.No == names(aux)[i], ])
-      temp.lm$coefficients[1] <- 0 
-      aux[[i]]$O2.background <- as.vector(predict.lm(temp.lm, aux[[i]], type = "response", se.fit = FALSE))
-      return(aux[[i]])
+      if (length(row) == 0)
+        return(NA)
+      else
+        return(post.bg$O2.background[row])
     })
 
-    meas.data <- as.data.frame(data.table::rbindlist(aux))
+    if (any(is.na(O2.background)))
+      warning('Some measurement phases are longer than the background. Discarding overextended points', immediate. = TRUE, call. = FALSE)
 
-    # p <- ggplot(data = meas.data, aes(x = Phase.Time))
-    # p <- p + geom_line(aes(y = O2.delta.raw), colour = 'blue')
-    # p <- p + geom_line(aes(y = O2.background), colour = 'red')
-    # p <- p + facet_wrap(. ~ Chamber.No)
-    # p
+    meas.data$O2.background <- O2.background
+    meas.data <- meas.data[!is.na(O2.background), ]
   }
 
   if(method == "average"){
     stop("average has not been updated yet")
-    prepost.data<-pre.data
-    prepost.data$O2.delta.raw <- (pre.data$O2.delta.raw + post.data$O2.delta.raw)/2
+    pre.link <- pre.bg$Chamber.No == meas.data$Chamber.No & pre.bg$Phase.Time == meas.data$Phase.time
+    post.link <- post.bg$Chamber.No == meas.data$Chamber.No & post.bg$Phase.Time == meas.data$Phase.time
 
-    temp.lm<-lm(O2.delta.raw ~ Phase.Time, data=subset(prepost.data, Chamber.No=="CH1"))
-    temp.lm$coefficients[1] <- 0
-    x<-as.vector(predict.lm(temp.lm, temp.df, type="response", se.fit=F))
-    any(x>0)
-    temp.df$O2.background <- x
-    rm(x)
-    rm(temp.lm)
+    recipient <- data.frame(pre = pre.bg[pre.link], post = post.bg[post.link])
+
+    recipient$mean <- apply(recipient, 1, function(x) mean(x, na.rm = TRUE))
+
+    meas.data$O2.background <- recipient$mean
   }
 
+
   if(method == "linear"){
+    stop('this method needs to be updated')
+
     all.meas <- unique(post.data$Phase)
-
-    if (pre.bg.meas == 'first')
-      pre.data <- pre.data[pre.data$Phase == all.meas[1], ]
-      
-    if (pre.bg.meas == 'last')
-      pre.data <- pre.data[pre.data$Phase == all.meas[length(all.meas)], ]
-
-
-    if (post.bg.meas == 'first')
-      post.data <- post.data[post.data$Phase == all.meas[1], ]
-      
-    if (post.bg.meas == 'last')
-      post.data <- post.data[post.data$Phase == all.meas[length(all.meas)], ]
-
-
-    M.phase <- levels(meas.data$Phase)
 
     # The operation is done by phase and by chamber, so the dataset is broken twice below
     by.chamber <- split(meas.data, meas.data$Chamber.No) # first by chamber
@@ -267,3 +230,79 @@ correct.meas <- function (pre.data, post.data, meas.data,
   
   return(output)
 }
+
+
+
+
+calculate.bg <- function(input, method = c('mean', 'first', 'last'), force.linear = TRUE, smoothing = 30){
+
+  method <- match.arg(method)
+
+  n.phases <- unique(input$Phase)
+
+  if (method == 'first')
+    input <- input[input$Phase == n.phases[1], ]
+    
+  if (method == 'last')
+    input <- input[input$Phase == n.phases[length(n.phases)], ]
+
+  chamber.lists <- split(input, input$Chamber.No)
+
+  bg.lists <- lapply(names(chamber.lists), function(chamber) {
+    # cat(i, '\n')
+    sub.data <- input[input$Chamber.No == chamber, ]
+
+    if (force.linear) {
+      bg.lm <- lm(O2.delta.raw ~ Phase.Time, data = sub.data)
+      bg.lm$coefficients[1] <- 0 
+
+      output <- data.frame(Phase.Time = 1:max(sub.data$Phase.Time))
+      output$O2.background <- as.vector(predict.lm(bg.lm, output, type = "response", se.fit = FALSE))
+    }
+    else {
+      output <- aggregate(sub.data$O2.delta.raw, by = list(sub.data$Phase.Time), mean)
+      colnames(output) <- c('Phase.Time', 'O2.background')
+      
+      if (smoothing > 1) {
+        x <- filter(output$O2.background, rep(1/smoothing, smoothing), sides = 2)
+
+        if (smoothing%%2 == 0) {
+          for (i in 1:(smoothing/2-1)) {
+            r <- round(i/2)
+            x[i] <- mean(output$O2.background[(i-r):(i+r)])
+          }
+
+          last.value <- length(x) - round(smoothing/2)
+          smooth.values <- (last.value - round(smoothing/2)):last.value
+          smooth.slope <- mean(x[smooth.values-1]-x[smooth.values])
+
+          for (i in (length(x)-(smoothing/2)):length(x)) {
+            x[i] <- x[i-1] - smooth.slope
+          }
+        }
+        output$O2.background <- x
+      }
+    }  
+    return(output)
+  })
+  names(bg.lists) <- names(chamber.lists)
+
+  output <- as.data.frame(data.table::rbindlist(bg.lists, idcol = 'Chamber.No'))
+
+  return(output)
+  }
+
+
+
+
+
+
+plot_bg <- function(obs, bg, mean.lwd = 1.5) {
+  p <- ggplot(data = obs, aes(x = Phase.Time))
+  p <- p + geom_line(aes(y = O2.delta.raw, group = Phase, colour = Phase))
+  p <- p + geom_line(data = bg, aes(y = O2.background), col = 'red', lwd = mean.lwd)
+  p <- p + facet_grid(. ~ Chamber.No)
+  p
+}
+
+

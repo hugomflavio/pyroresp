@@ -80,8 +80,12 @@ calculate.MR  <- function(slope.data, density = 1000, plot.BR = FALSE,
     par(mfrow = c(2, 1), ask = TRUE)
     print(d)
   }
-  a <- slope.data$DO.unit[1]
-  MR.data <- slope.data[,-12]
-  MR.data$DO.unit <- a[1]
+
+  # a <- slope.data$DO.unit[1]
+  # MR.data <- slope.data[,-12]
+  # MR.data$DO.unit <- a[1]
+  MR.data <- slope.data
+
+  attributes(MR.data)$selection.method <- attributes(slope.data)$selection.method
   return(MR.data)
 }
