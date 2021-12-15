@@ -296,22 +296,37 @@ plot_deltas <- function(input, cycles, chambers) {
 #' 
 plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = FALSE, 
 							title = 'Experiment measurements', oxygen.label = 'O2',
-							mr.col = 'MR.mass', mr.label = 'MO2') {
+							mr.col = 'MR.mass', mr.label = 'MO2', verbose = FALSE) {
+
+	if (verbose)
+		message('Plotting Pre-background')
 
 	if (!missing(pre))
-		p_pre <- plot_meas(pre$phased, oxygen.label = oxygen.label, cycles = cycles, chambers = chamber, temperature = TRUE) + labs(title = 'Pre-background')
+		p_pre <- plot_meas(pre$phased, oxygen.label = oxygen.label, chambers = chamber, temperature = TRUE) + labs(title = 'Pre-background')
 	else
 		p_pre <- wrap_elements(grid::textGrob('Pre-background was not recorded'))
 	
+	if (verbose)
+		message('Plotting Post-background')
+
 	if (!missing(post))
-		p_post <- plot_meas(post$phased, oxygen.label = oxygen.label, cycles = cycles, chambers = chamber, temperature = TRUE) + labs(title = 'Post-background')
+		p_post <- plot_meas(post$phased, oxygen.label = oxygen.label, chambers = chamber, temperature = TRUE) + labs(title = 'Post-background')
 	else
 		p_post <- wrap_elements(grid::textGrob('Post-background was not recorded'))
+
+	if (verbose)
+		message('Plotting measurements')
 
 	p1 <- plot_meas(mr$phased, oxygen.label = oxygen.label, cycles = cycles, chamber = chamber, temperature = TRUE) 
 	p1 <- p1 + labs(title = title, x = '')
 	
+	if (verbose)
+		message('Plotting deltas')
+
 	B <- plot_deltas(mr$corrected, cycles = cycles, chambers = i) + mimic_x(p1)
+
+	if (verbose)
+		message('Plotting plotting slopes')
 
 	p2 <- plot_slopes(mr$all.slopes, cycles = cycles, chambers = i) + mimic_x(p1) + xlab('')
 
@@ -324,6 +339,9 @@ plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = F
 		the_mmr <- mr$mmr
 	else
 		the_mmr <- NULL
+
+	if (verbose)
+		message('Plotting metabolic rate')
 
 	p3 <- plot_mr(MR = mr$mr, SMR = the_smr, MMR = the_mmr, chambers = i, 
 		  target_col = mr.col, ylabel = mr.label)
