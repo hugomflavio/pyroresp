@@ -294,8 +294,8 @@ process_pyro_files <- function(input, wait, chamber.info) {
 #' 
 #' @export
 #' 
-process_pyro_mr <- function(input, r2, smr.method = "calcSMR.low10pc") {
-  input$all.slopes <- calc.slope(input$corrected)
+process_pyro_mr <- function(input, r2, smr.method = "calcSMR.low10pc", max.length = 99999) {
+  input$all.slopes <- calc.slope(input$corrected, max.length = max.length)
   input$good.slopes <- extract.slope(input$all.slopes, r2 = r2)
   input$smr.slope <- extract.slope(input$good.slopes, method = smr.method, r2 = r2)
   input$mmr.slope <- extract.slope(input$good.slopes, method = "max", r2 = r2, n.slope = 1)
