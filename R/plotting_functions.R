@@ -209,24 +209,27 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 	p <- p + ggplot2::theme_bw()
 
 	if (temperature) {
-		ox.mean <- mean(plotdata$Oxygen)
-		temp.mean <- mean(plotdata$Temperature)
-		mean.dif <- temp.mean - ox.mean
 		aux <- range(plotdata$Oxygen)
 		ox.range <- aux[2] - aux[1]
+		ox.mid <- mean(aux)
+
 		aux <- range(plotdata$Temperature)
 		temp.range <- aux[2] - aux[1]
+		temp.mid <- mean(aux)
 
-		if (ox.range == 0 | temp.range == 0)
+		mid.dif <- temp.mid - ox.mid
+
+		if (ox.range == 0 | temp.range == 0) {
 			compress.factor <- 1
-		else
+		} else {
 			compress.factor <- ox.range/temp.range
+		}
 
-		data.link <- function(x, a = temp.mean, b = ox.mean, c.factor = compress.factor) {
+		data.link <- function(x, a = temp.mid, b = ox.mid, c.factor = compress.factor) {
 			b + ((x - a) * c.factor) # = y
 		}
 
-		axis.link <- function(y, a = temp.mean, b = ox.mean, c.factor = compress.factor) {
+		axis.link <- function(y, a = temp.mid, b = ox.mid, c.factor = compress.factor) {
 		  (y + a * c.factor - b) / c.factor # = x
 		}
 
@@ -250,7 +253,7 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 #' 
 #' @export
 #' 
-plot_deltas <- function(input, cycles, chambers) {
+plot_deltas <- function(input, cycles, chambers, raw_delta_col = 'O2.delta.raw') {
 	if (!missing(cycles)) {
 		if (!is.numeric(cycles))
 			stop("cycles must be a numeric vector")
@@ -272,10 +275,10 @@ plot_deltas <- function(input, cycles, chambers) {
 		input <- input[input$Chamber.No %in% chambers, ]
 	}
 
-
+	input$plot_this <- input[, raw_delta_col]
 	p <- ggplot(data = input, aes(x = Date.Time, Group = Phase))
 	p <- p + geom_path(aes(y = O2.background, col = 'Background'))
-	p <- p + geom_path(data = input, aes(y = O2.delta.raw, col = 'Raw'))
+	p <- p + geom_path(data = input, aes(y = plot_this, col = 'Raw'))
 	p <- p + geom_path(data = input, aes(y = O2.delta.corrected, col = 'Corrected'))
 	p <- p + theme_bw()
 	p <- p + ggplot2::scale_colour_manual(values = c("Grey", "royalblue", 'black'))
@@ -294,7 +297,7 @@ plot_deltas <- function(input, cycles, chambers) {
 #' 
 #' @export
 #' 
-plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = FALSE, 
+plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = FALSE, raw_delta_col = 'O2.delta.raw',
 							title = 'Experiment measurements', oxygen.label = 'O2',
 							mr.col = 'MR.mass', mr.label = 'MO2', verbose = FALSE) {
 
@@ -323,7 +326,7 @@ plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = F
 	if (verbose)
 		message('Plotting deltas')
 
-	B <- plot_deltas(mr$corrected, cycles = cycles, chambers = i) + mimic_x(p1)
+	B <- plot_deltas(mr$corrected, cycles = cycles, chambers = i, raw_delta_col = raw_delta_col) + mimic_x(p1)
 
 	if (verbose)
 		message('Plotting plotting slopes')

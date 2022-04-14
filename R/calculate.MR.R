@@ -89,3 +89,35 @@ calculate.MR  <- function(slope.data, density = 1000, plot.BR = FALSE,
   attributes(MR.data)$selection.method <- attributes(slope.data)$selection.method
   return(MR.data)
 }
+
+
+
+
+#' fraction MR
+fraction_mr <- function(input, chamber, phase, smoothing) {
+  x <- input$corrected[input$corrected$Phase == phase & input$corrected$Chamber.No == chamber, ]
+  head(x)
+
+  recipient <- lapply(smoothing:nrow(x), function(i) {
+    aux_m <- lm(O2.delta.corrected ~ Phase.Time,
+          data = x[(i - smoothing + 1):i, ])
+    output <- data.frame(
+      Chamber.No = chamber,
+      Phase = phase,
+      Sec = i,
+      Smoothing = smoothing,
+      Slope = coef(aux_m)[2],
+      R2 = summary(aux_m)$r.squared)
+    return(output)
+  })
+
+  output <- data.table::rbindlist(recipient)
+
+  BW <- x$Mass[1]/1000
+  V <- x$Volume[1]/1000 - BW
+
+  output$MR.abs <- -(output$Slope * V * 3600)
+  output$MR.mass <- -(output$Slope * V * 3600 / BW)
+
+  return(output)
+}

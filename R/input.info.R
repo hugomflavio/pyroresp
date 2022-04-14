@@ -36,10 +36,8 @@ input.info <- function(ID,
                  Chamber.No,
                  Mass,
                  Volume,
-                 First.meas,
-                 DO.unit = c("mg/L", "mmol/L", "ml/L")){
+                 First.meas){
 
-  DO.unit <- match.arg(DO.unit)
 
   if (missing(ID)) 
     ID <- 1:length(Mass)
@@ -51,20 +49,6 @@ input.info <- function(ID,
     First.meas <- rep(1, length(Mass))
   
   info.data <- data.frame(ID, Mass, Chamber.No, Volume, First.meas, stringsAsFactors = FALSE)
-
-  if(DO.unit == "mg/L"){
-    DO <- "mg O2"
-  }
-
-  if(DO.unit == "mmol/L"){
-    DO <- "mmol O2"
-  }
-
-  if(DO.unit == "ml/L"){
-    DO <- "ml O2"
-  }
-
-  info.data$DO.unit <- as.character(DO)
 
   return(info.data)
 }

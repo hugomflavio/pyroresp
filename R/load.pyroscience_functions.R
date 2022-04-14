@@ -36,19 +36,12 @@ load.pyroscience.logger.file <- function(file, n.chamber = 1:4, date.format) {
 #' 
 #' @param file The name of a file which contains raw data obtained from the 'PyroScience Workbench' software (\href{https://www.pyro-science.com}{PyroScience}) 
 #' @param date.format  A string indicating date format used in raw data obtained from the 'Pyro Oxygen Logger' software (e.g. "\%Y-\%m-\%d")
-#' @param o2_from Optional: a string describing the units in which o2 was measured. All options are available at \code{\link[respirometry]{conv_o2}}
-#' @param o2_to Optional: a string describing the unit to which the o2 measurements should be converted. All options are available at \code{\link[respirometry]{conv_o2}}
 #' 
 #' @return A dataframe containing the recorded oxygen data
 #' 
 #' @export
 #' 
-load.pyroscience.workbench.file <- function(file, date.format, o2_from, o2_to) {
-  if (!missing(o2_from) & !missing(o2_to))
-    convert_o2 <- TRUE
-  else
-    convert_o2 <- FALSE
-
+load.pyroscience.workbench.file <- function(file, date.format) {
   if (!file.exists(file))
     stop("Could not find target file.", call. = FALSE)
 
@@ -60,13 +53,8 @@ load.pyroscience.workbench.file <- function(file, date.format, o2_from, o2_to) {
 
   rm(aux)
 
-  if (convert_o2) {
-    column.vector <- c(1, 2, 12, 17, 4, 30, 35, 22, 48, 53, 40, 66, 71, 58)[1:(2 + 3 * n.chambers)]
-    column.names <- c("Date", "Time", "Temp.1", "Pressure.1", "Ox.1", "Temp.2", "Pressure.2", "Ox.2", "Temp.3", "Pressure.3", "Ox.3", "Temp.4", "Pressure.4", "Ox.4")[1:(2 + 3 * n.chambers)]
-  } else {
-    column.vector <- c(1, 2, 12, 4, 30, 22, 48, 40, 66, 58)[1:(2 + 2 * n.chambers)]
-    column.names <- c("Date", "Time", "Temp.1", "Ox.1", "Temp.2", "Ox.2", "Temp.3", "Ox.3", "Temp.4", "Ox.4")[1:(2 + 2 * n.chambers)]
-  }
+  column.vector <- c(1, 2, 12, 17, 4, 30, 35, 22, 48, 53, 40, 66, 71, 58)[1:(2 + 3 * n.chambers)]
+  column.names <- c("Date", "Time", "Temp.1", "Pressure.1", "Ox.1", "Temp.2", "Pressure.2", "Ox.2", "Temp.3", "Pressure.3", "Ox.3", "Temp.4", "Pressure.4", "Ox.4")[1:(2 + 3 * n.chambers)]
 
   pyro <- as.data.frame(data.table::fread(file, sep = "\t", skip = preamble, strip.white = TRUE, tz = ""))
 
@@ -84,18 +72,6 @@ load.pyroscience.workbench.file <- function(file, date.format, o2_from, o2_to) {
   # failsafe in case the file comes with a trailing NA line
   if (all(is.na(pyro[nrow(pyro), ])))
     pyro <- pyro[-nrow(pyro), ]
-
-  if (convert_o2) {
-    for (i in 1:n.chambers) {
-      pyro[, paste0("Ox.", i)] <- 
-        respirometry::conv_o2(o2 = pyro[, paste0("Ox.", i)],
-                              from = o2_from,
-                              to = o2_to,
-                              temp = pyro[, paste0("Temp.", i)],
-                              sal = 0, atm_pres = pyro[, paste0("Pressure.", i)])
-    }
-    pyro <- pyro[,!grepl("Pressure", colnames(pyro))]
-  }
 
   if (any(is.na(pyro[,-1:-2])))
     warning('NA values found in the data!', immediate. = TRUE, call. = FALSE)
@@ -279,12 +255,25 @@ load_pyro_files <- function(folder) {
 #' 
 #' @export
 #' 
-process_pyro_files <- function(input, wait, chamber.info) {
+process_pyro_files <- function(input, wait, chamber.info, O2_unit, min_temp, max_temp) {
   input$pyro <- patch.NAs(input$pyro, method = "linear")
   input$phased <- merge_pyroscience_coolterm(input$pyro, input$coolterm)
   input$phased <- input$phased[!is.na(input$phased$Phase),]
   input$meas <- clean.meas(input = input$phased, wait = wait)
-  input$meas <- melt_resp(input$meas, chamber.info) 
+  input$meas <- melt_resp(input$meas, chamber.info, O2_unit = O2_unit) 
+  input$meas$O2.umol.l <- respirometry::conv_o2(input$meas$O2.hPa, from = 'hPa', to = 'umol_per_l', temp = input$meas$Temp, sal = 0, atm_pres = input$meas$Pressure)
+  input$meas$O2.a.s <- respirometry::conv_o2(input$meas$O2.hPa, from = 'hPa', to = 'percent_a.s.', temp = input$meas$Temp, sal = 0, atm_pres = input$meas$Pressure)
+
+  if (!missing(min_temp)) {
+    time_break <- input$meas$Date.Time[which(input$meas$Phase == input$meas$Phase[head(which(input$meas$Temp > min_temp), 1)])[1]]
+    input$meas <- input$meas[input$meas$Date.Time >= time_break, ]
+  }
+
+  if (!missing(max_temp)) {
+    time_break <- input$meas$Date.Time[which(input$meas$Phase == input$meas$Phase[head(which(input$meas$Temp < max_temp), 1)])[1]]
+    input$meas <- input$meas[input$meas$Date.Time >= time_break, ]    
+  }
+
   return(input)
 }
 
@@ -294,8 +283,8 @@ process_pyro_files <- function(input, wait, chamber.info) {
 #' 
 #' @export
 #' 
-process_pyro_mr <- function(input, r2, smr.method = "calcSMR.low10pc", max.length = 99999) {
-  input$all.slopes <- calc.slope(input$corrected, max.length = max.length)
+process_pyro_mr <- function(input, r2, O2_raw = 'O2.raw', smr.method = "calcSMR.low10pc", max.length = 99999) {
+  input$all.slopes <- calc.slope(input$corrected, O2_raw = O2_raw, max.length = max.length)
   input$good.slopes <- extract.slope(input$all.slopes, r2 = r2)
   input$smr.slope <- extract.slope(input$good.slopes, method = smr.method, r2 = r2)
   input$mmr.slope <- extract.slope(input$good.slopes, method = "max", r2 = r2, n.slope = 1)
@@ -303,7 +292,81 @@ process_pyro_mr <- function(input, r2, smr.method = "calcSMR.low10pc", max.lengt
   input$mr <- calculate.MR(input$good.slopes)
   input$smr <- calculate.MR(input$smr.slope)
   input$mmr <- calculate.MR(input$mmr.slope)
+
+  # convert O2/Kg to O2/g
+  input$smr$MR.mass.umol.g <- input$smr$MR.mass/1000
+  input$mmr$MR.mass.umol.g <- input$mmr$MR.mass/1000
+  input$mr$MR.mass.umol.g <- input$mr$MR.mass/1000
+
   return(input)
 }
 
 
+
+
+
+
+
+
+
+
+
+# load.pyroscience.workbench.file <- function(file, date.format, o2_from, o2_to) {
+#   if (!missing(o2_from) & !missing(o2_to))
+#     convert_o2 <- TRUE
+#   else
+#     convert_o2 <- FALSE
+
+#   if (!file.exists(file))
+#     stop("Could not find target file.", call. = FALSE)
+
+#   aux <- readLines(file, n = 100)
+#   preamble <- suppressWarnings(max(grep("^#", aux)))
+  
+#   aux <- suppressWarnings(aux[grepl("Ch.[1-4]\\] - Oxygen Sensor", aux)])
+#   n.chambers <- length(sub("\\D*(\\d+).*", "\\1", aux))
+
+#   rm(aux)
+
+#   if (convert_o2) {
+#     column.vector <- c(1, 2, 12, 17, 4, 30, 35, 22, 48, 53, 40, 66, 71, 58)[1:(2 + 3 * n.chambers)]
+#     column.names <- c("Date", "Time", "Temp.1", "Pressure.1", "Ox.1", "Temp.2", "Pressure.2", "Ox.2", "Temp.3", "Pressure.3", "Ox.3", "Temp.4", "Pressure.4", "Ox.4")[1:(2 + 3 * n.chambers)]
+#   } else {
+#     column.vector <- c(1, 2, 12, 4, 30, 22, 48, 40, 66, 58)[1:(2 + 2 * n.chambers)]
+#     column.names <- c("Date", "Time", "Temp.1", "Ox.1", "Temp.2", "Ox.2", "Temp.3", "Ox.3", "Temp.4", "Ox.4")[1:(2 + 2 * n.chambers)]
+#   }
+
+#   pyro <- as.data.frame(data.table::fread(file, sep = "\t", skip = preamble, strip.white = TRUE, tz = ""))
+
+#   pyro <- pyro[, column.vector]
+#   names(pyro) <- column.names
+
+#   pyro$Date.Time <- paste(pyro$Date, pyro$Time)
+#   pyro$Phase <- NA
+#   pyro[pyro == "---"] <- NA
+  
+#   pyro <- pyro[, c(ncol(pyro) - 1, ncol(pyro), 3:(ncol(pyro)-2))]
+  
+#   pyro$Date.Time <- as.POSIXct(pyro$Date.Time, format = paste(date.format, "%H:%M:%S"), tz = Sys.timezone())
+
+#   # failsafe in case the file comes with a trailing NA line
+#   if (all(is.na(pyro[nrow(pyro), ])))
+#     pyro <- pyro[-nrow(pyro), ]
+
+#   if (convert_o2) {
+#     for (i in 1:n.chambers) {
+#       pyro[, paste0("Ox.", i)] <- 
+#         respirometry::conv_o2(o2 = pyro[, paste0("Ox.", i)],
+#                               from = o2_from,
+#                               to = o2_to,
+#                               temp = pyro[, paste0("Temp.", i)],
+#                               sal = 0, atm_pres = pyro[, paste0("Pressure.", i)])
+#     }
+#     pyro <- pyro[,!grepl("Pressure", colnames(pyro))]
+#   }
+
+#   if (any(is.na(pyro[,-1:-2])))
+#     warning('NA values found in the data!', immediate. = TRUE, call. = FALSE)
+
+#   return(pyro)
+# }

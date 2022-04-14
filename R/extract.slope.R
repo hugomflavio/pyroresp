@@ -2,7 +2,7 @@
 #' 
 #' @export
 #' 
-calc.slope <- function(input, max.length = Inf) {
+calc.slope <- function(input, O2_raw = 'O2.raw', max.length = Inf) {
   # The operation is done by phase and by chamber, so the dataset is broken twice below
   by.chamber <- split(input, input$Chamber.No) # first by chamber
 
@@ -12,7 +12,8 @@ calc.slope <- function(input, max.length = Inf) {
     recipient <- lapply(by.phase, function(the.phase) {
       trimmed.phase <- the.phase[the.phase$Phase.Time <= max.length, ]
 
-      model.with.BR <- lm(O2.raw ~ Phase.Time, data = trimmed.phase)
+      fm <- as.formula(paste(O2_raw, '~ Phase.Time'))
+      model.with.BR <- lm(fm, data = trimmed.phase)
 
       model.without.BR <- lm(O2.corrected ~ Phase.Time, data = trimmed.phase)
 
