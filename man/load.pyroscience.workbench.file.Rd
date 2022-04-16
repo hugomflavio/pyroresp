@@ -4,16 +4,12 @@
 \alias{load.pyroscience.workbench.file}
 \title{Load a respirometry data file originating from pyroscience's 'PyroScience Workbench' software.}
 \usage{
-load.pyroscience.workbench.file(file, date.format, o2_from, o2_to)
+load.pyroscience.workbench.file(file, date.format)
 }
 \arguments{
 \item{file}{The name of a file which contains raw data obtained from the 'PyroScience Workbench' software (\href{https://www.pyro-science.com}{PyroScience})}
 
 \item{date.format}{A string indicating date format used in raw data obtained from the 'Pyro Oxygen Logger' software (e.g. "\%Y-\%m-\%d")}
-
-\item{o2_from}{Optional: a string describing the units in which o2 was measured. All options are available at \code{\link[respirometry]{conv_o2}}}
-
-\item{o2_to}{Optional: a string describing the unit to which the o2 measurements should be converted. All options are available at \code{\link[respirometry]{conv_o2}}}
 }
 \value{
 A dataframe containing the recorded oxygen data

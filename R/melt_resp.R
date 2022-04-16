@@ -53,7 +53,10 @@ melt_resp <- function(input, info.data, O2_unit) {
   return(output)
 }
 
-
+#' Dummy documentation
+#' 
+#' @export
+#' 
 calc_delta <- function(input, O2_col) {
 
   input[, paste0('O2.delta', sub('O2', '', O2_col))] <- NULL

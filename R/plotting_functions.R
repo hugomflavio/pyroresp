@@ -305,7 +305,7 @@ plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = F
 		message('Plotting Pre-background')
 
 	if (!missing(pre))
-		p_pre <- plot_meas(pre$phased, oxygen.label = oxygen.label, chambers = chamber, temperature = TRUE) + labs(title = 'Pre-background')
+		p_pre <- plot_bg(pre$meas, O2_col = 'O2.delta.umol.l', pre$bg, chambers = chamber) + labs(title = 'Pre-background')
 	else
 		p_pre <- wrap_elements(grid::textGrob('Pre-background was not recorded'))
 	
@@ -313,7 +313,7 @@ plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = F
 		message('Plotting Post-background')
 
 	if (!missing(post))
-		p_post <- plot_meas(post$phased, oxygen.label = oxygen.label, chambers = chamber, temperature = TRUE) + labs(title = 'Post-background')
+		p_post <- plot_bg(post$meas, O2_col = 'O2.delta.umol.l', post$bg, chambers = chamber) + labs(title = 'Post-background')
 	else
 		p_post <- wrap_elements(grid::textGrob('Post-background was not recorded'))
 
@@ -357,5 +357,35 @@ plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = F
 
 mimic_x <- function(input) {
 	ggplot2::xlim(as.POSIXct(ggplot2::layer_scales(input)$x$range$range, origin = "1970-01-01 00:00.00"))	
+}
+
+
+
+
+
+
+#' dummy doc
+#' 
+#' @export
+#' 
+plot_bg <- function(obs, bg, chambers, O2_col = O2.delta.raw, mean.lwd = 1.5) {
+
+	if (!missing(chambers)) {
+		if (is.numeric(chambers))
+			chambers <- paste0('CH', chambers)
+
+		obs <- obs[obs$Chamber.No %in% chambers, ]
+		bg <- bg[bg$Chamber.No %in% chambers, ]
+	}
+
+	obs$Phase <- as.numeric(sub('M', '', obs$Phase))
+	
+	p <- ggplot(data = obs, aes(x = Phase.Time))
+	p <- p + geom_line(aes_string(y = O2_col, group = "Phase", colour = "Phase"))
+	p <- p + geom_line(data = bg, aes(y = O2.background), col = 'red', lwd = mean.lwd)
+	p <- p + facet_grid(. ~ Chamber.No)
+	p <- p + theme_bw()
+	p <- p + theme(legend.position = 'none')
+	p
 }
 

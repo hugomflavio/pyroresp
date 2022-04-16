@@ -279,19 +279,3 @@ calculate.bg <- function(input, O2_col = 'O2.delta.raw', method = c('mean', 'fir
 
 
 
-
-
-#' dummy doc
-#' 
-#' @export
-#' 
-plot_bg <- function(obs, bg, O2_col = O2.delta.raw, mean.lwd = 1.5) {
-
-  p <- ggplot(data = obs, aes(x = Phase.Time))
-  p <- p + geom_line(aes_string(y = O2_col, group = "Phase", colour = "Phase"))
-  p <- p + geom_line(data = bg, aes(y = O2.background), col = 'red', lwd = mean.lwd)
-  p <- p + facet_grid(. ~ Chamber.No)
-  p
-}
-
-
