@@ -94,6 +94,7 @@ calculate.MR  <- function(slope.data, density = 1000, plot.BR = FALSE,
 
 
 #' fraction MR
+#' @export
 fraction_mr <- function(input, chamber, phase, smoothing) {
   x <- input$corrected[input$corrected$Phase == phase & input$corrected$Chamber.No == chamber, ]
   head(x)
