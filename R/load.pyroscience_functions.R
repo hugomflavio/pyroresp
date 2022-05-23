@@ -89,6 +89,7 @@ patch.NAs <- function(input, method = c('linear', 'before', 'after')) {
   rle_list <- apply(logical_db, 2, rle)
 
   capture <- lapply (1:ncol(db), function(coln) {
+    # cat(coln, '\n')
     aux <- cumsum(rle_list[[coln]]$lengths)
     breaks <- data.frame(Value = rle_list[[coln]]$values,
                          Start = c(1, aux[-length(aux)] + 1),
@@ -97,6 +98,7 @@ patch.NAs <- function(input, method = c('linear', 'before', 'after')) {
     if (any(breaks$Value)) {
       nas <- breaks[breaks$Value, ]
       for (i in 1:nrow(nas)) {
+        # cat(i, '\n')
         if (method == 'linear') {
           if (nas$Start[i] == 1) {
             warning("NAs found at the start of a column. Using method = 'after' for this instance.", immediate. = TRUE, call. = FALSE)
@@ -110,7 +112,7 @@ patch.NAs <- function(input, method = c('linear', 'before', 'after')) {
             fake_values <- seq(from = db[nas$Start[i] - 1, coln],
                                to = db[nas$Stop[i] + 1, coln],
                                length.out = nas$Stop[i] - nas$Start[i] + 3) # 1 for the before value, 1 for the after, and 1 for the value that is eliminated by the subtraction
-            db[nas$Start[i]:nas$Stop[i], coln] <<- fake_values          
+            db[(nas$Start[i] - 1):(nas$Stop[i] + 1), coln] <<- fake_values          
           }
         }
         if (method == 'before') {
@@ -248,6 +250,81 @@ load_pyro_files <- function(folder) {
   output$pyro <- load.pyroscience.workbench.file(pyro_file, date.format = "%d-%m-%Y")
   return(output)
 }
+
+
+
+#' dummy documentation
+#' 
+#' scan a target folder for a coolterm file and a pyroscience experiment file. import them.
+#' 
+#' @export
+#' 
+compile_run <- function(folder) {
+  files <- list.files(paste0(folder, '/ChannelData/'))
+
+  O2.file.link <- grepl('Oxygen.txt', files)
+
+  if (all(!O2.file.link)) {
+    stop('No oxygen files found')
+  }
+
+  O2.files <- files[O2.file.link]
+
+  aux <- lapply(O2.files, function(i) {
+    x <- load.pyroscience.o2.file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
+    x <- x[, c('Date.Time', 'Sample.CompT', 'Pressure.CompP', 'Oxygen.Main')]
+    ch <- stringr::str_extract(i,'(?<=Ch.)[0-9]')
+    colnames(x)[2:4] <- paste0(c('Temp.', 'Pressure.', 'Ox.'),  ch)
+    return(x)
+  })
+
+
+  very.start <- min(as.POSIXct(sapply(aux, function(i) {
+    as.character(min(i$Date.Time))
+  })))
+
+  very.end <- max(as.POSIXct(sapply(aux, function(i) {
+    as.character(max(i$Date.Time))
+  })))
+
+  recipient <- data.frame(Date.Time = seq(from = very.start, to = very.end, by = 1),
+                          Phase = NA_character_)
+
+  for (i in aux) {
+    recipient <- merge(recipient, i, by = 'Date.Time', all = TRUE)
+  }
+
+  return(recipient)
+}
+
+
+
+#' dummy documentation
+#' 
+#' scan a target folder for a coolterm file and a pyroscience experiment file. import them.
+#' 
+#' @export
+#' 
+load_pyro_raw_files <- function(folder) {
+  if (!dir.exists(folder))
+    stop('Could not find target folder')
+
+  aux <- paste0(folder, "/", list.files(folder)[grepl(".txt", list.files(folder))])
+  
+  coolterm_file <- aux[grepl("CoolTerm", aux)]
+  
+  if (length(coolterm_file) == 0)
+    stop('Could not find coolterm file')
+
+
+  output <- list()
+
+  output$coolterm <- load.coolterm.file(coolterm_file)
+  output$pyro <- compile_run(folder)
+  return(output)
+}
+
+
 
 #' dummy documentation
 #' 
