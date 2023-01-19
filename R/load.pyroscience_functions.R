@@ -503,8 +503,6 @@ process_pyro_mr <- function(input, r2, O2_raw, smr.method = "calcSMR.low10pc", m
 
 #' dummy documentation
 #' 
-#' \
-#' 
 #' @export
 #' 
 remove_phase <- function(input, chamber, phase) {
