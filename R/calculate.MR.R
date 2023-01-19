@@ -122,3 +122,136 @@ fraction_mr <- function(input, chamber, phase, smoothing) {
 
   return(output)
 }
+
+
+#' dummy doc
+#' 
+#' @export
+#' 
+calculate.bg <- function(input, O2_col, method = c('mean', 'first', 'last'), force.linear = TRUE, smoothing = 30){
+
+  method <- match.arg(method)
+
+  n.phases <- unique(input$Phase)
+
+  if (method == 'first')
+    input <- input[input$Phase == n.phases[1], ]
+    
+  if (method == 'last')
+    input <- input[input$Phase == n.phases[length(n.phases)], ]
+
+  chamber.lists <- split(input, input$Chamber.No)
+
+  bg.lists <- lapply(names(chamber.lists), function(chamber) {
+    # cat(chamber, '\n')
+    sub.data <- input[input$Chamber.No == chamber, ]
+
+    if (force.linear) {
+
+      bg.lm <- eval(parse(text = paste("lm(", O2_col, "~ Phase.Time, data = sub.data)")))
+      bg.lm$coefficients[1] <- 0 
+
+      output <- data.frame(Phase.Time = 1:max(sub.data$Phase.Time))
+      output$O2.background <- as.vector(predict(bg.lm, output, type = "response", se.fit = FALSE))
+    }
+    else {
+      output <- aggregate(sub.data[, O2_col], by = list(sub.data$Phase.Time), mean)
+      colnames(output) <- c('Phase.Time', 'O2.background')
+      
+      if (smoothing > 1) {
+        x <- stats::filter(output$O2.background, rep(1/smoothing, smoothing), sides = 2)
+
+        if (smoothing%%2 == 0) {
+          for (i in 1:(smoothing/2-1)) {
+            r <- round(i/2)
+            x[i] <- mean(output$O2.background[(i-r):(i+r)])
+          }
+
+          last.value <- length(x) - round(smoothing/2)
+          smooth.values <- (last.value - round(smoothing/2)):last.value
+          smooth.slope <- mean(x[smooth.values-1]-x[smooth.values])
+
+          for (i in (length(x)-(smoothing/2)):length(x)) {
+            x[i] <- x[i-1] - smooth.slope
+          }
+        }
+        output$O2.background <- x
+      }
+    }  
+    return(output)
+  })
+  names(bg.lists) <- names(chamber.lists)
+
+  output <- as.data.frame(data.table::rbindlist(bg.lists, idcol = 'Chamber.No'))
+
+  return(output)
+}
+
+
+#' Override background correction factor for any given
+#' chambers using the values from another chamber.
+#' 
+#' @export
+#' 
+override_bg <- function(bg, replace, with) {
+  if (!is.data.frame(bg))
+    stop("bg must be a data.frame")
+
+  if (all(!grepl("Chamber.No", colnames(bg))))
+    stop("bg must contain a 'Chamber.No' column.")
+  
+  if (all(!grepl("O2.background", colnames(bg))))
+    stop("bg must contain a 'O2.background' column.")
+  
+  if (any(!(replace %in% bg$Chamber.No)))
+    stop("Could not find some of the specified chambers to replace in bg")
+
+  if (length(with) != 1)
+    stop("Please chose only one chamber to use as replacement in 'with'.")
+  
+  if (!(with %in% bg$Chamber.No))
+    stop("Could not find the replacement chamber in bg")
+
+  for (i in replace) {
+    if (sum(bg$Chamber.No == i) > sum(bg$Chamber.No == with))
+      stop("the cycle for the replacement chamber is shorted than the cycle for the chamber to be replaced.")
+
+    bg$O2.background[bg$Chamber.No == i] <- bg$O2.background[bg$Chamber.No == with][1:sum(bg$Chamber.No == i)]
+    # the additional subset at the end ensures 
+  }
+
+  return(bg)
+}
+
+
+
+#' Dummy documentation
+#' 
+#' @export
+#' 
+calc_delta <- function(input, O2_col) {
+
+  input[, paste0('O2.delta', sub('O2', '', O2_col))] <- NULL
+  
+  by.chamber <- split(input, input$Chamber.No)
+  
+  recipient <- lapply(names(by.chamber), function(the.chamber, info.data) {
+
+    trimmed.db <- by.chamber[[the.chamber]]
+
+    by.phase <- split(trimmed.db, trimmed.db$Phase)
+    
+    recipient <- lapply(by.phase, function(the.phase) {
+      the.phase$O2.delta <- the.phase[, O2_col] - the.phase[1, O2_col]
+      return(the.phase)
+    })
+    
+    output <- data.table::rbindlist(recipient)
+
+  })
+
+  output <- as.data.frame(data.table::rbindlist(recipient))
+  colnames(output)[ncol(output)] <- paste0('O2.delta', sub('O2', '', O2_col))
+
+  return(output)
+}

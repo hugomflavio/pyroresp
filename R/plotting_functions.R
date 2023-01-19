@@ -28,9 +28,9 @@ plot_mr <- function(MR, SMR = NULL, MMR = NULL, cycles, chambers, target_col = '
 		MR <- MR[MR$Chamber.No %in% chambers, ]
 	}
 
-	p <- ggplot2::ggplot(data = MR, ggplot2::aes(x = Date.Time, y = y_column))
-	p <- p + ggplot2::geom_line()
-	p <- p + ggplot2::geom_point()
+	p <- ggplot2::ggplot()
+	p <- p + ggplot2::geom_line(data = MR, ggplot2::aes(x = Date.Time, y = y_column))
+	p <- p + ggplot2::geom_point(data = MR, ggplot2::aes(x = Date.Time, y = y_column))
 
 	if (!is.null(SMR)) {
 		SMR$y_column <- SMR[, target_col]
@@ -153,54 +153,52 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 		phases <- as.vector(outer(c("M", "F"), cycles, paste0))
 		phase.string <- paste0("^", paste(phases, collapse = "$|^"), "$")
 		input <- input[grepl(phase.string, input$Phase), ]
-		input$Phase <- droplevels(input$Phase)
+		# input$Phase <- droplevels(input$Phase)
 		rm(phases, phase.string)
 	}
 
 	if (!missing(chambers)) {
-		if (!is.numeric(chambers))
-			chambers <- as.numeric(sub('CH', '', chambers))
-		cols.to.keep <- c("Date.Time", "Phase", as.vector(outer(c("Ox.", "Temp."), chambers, paste0)))
-		input <- input[,cols.to.keep]
+		if (is.numeric(chambers))
+			chambers <- paste0('CH', chambers)
+
+		input <- input[input$Chamber.No %in% chambers, ]
 	}
 
 	if (any(grepl("F", input$Phase))) {
 		paint_flush <- TRUE
-		aux <- split(input, input$Phase)
-		aux <- aux[grepl("F", names(aux))]
-		aux <- lapply(aux, function(x) {
-			data.frame(xmin = x$Date.Time[1], xmax = x$Date.Time[nrow(x)], ymin = -Inf, ymax = Inf)
+
+		aux <- split(input, input$Chamber.No)
+		
+		recipient <- lapply(names(aux), function(the.chamber) {
+			# instead of using split I need to manually break these
+			# because F0 can appear multiple times. split would
+			# group them together and mess up the plot
+			breaks <- c(1, cumsum(rle(aux[[the.chamber]]$Phase)$lengths))
+			aux2 <- lapply(2:length(breaks), function(i) {
+				input[breaks[i-1]:breaks[i], ]
+			})
+			# --
+			names(aux2) <- rle(aux[[the.chamber]]$Phase)$values
+			aux2 <- aux2[grepl("F", names(aux2))]
+			# now extract start and end of phase
+			aux2 <- lapply(aux2, function(the.phase) {
+				data.frame(Chamber.No = the.chamber, xmin = the.phase$Date.Time[1], xmax = the.phase$Date.Time[nrow(the.phase)], ymin = -Inf, ymax = Inf)
+			})
+			return(as.data.frame(data.table::rbindlist(aux2)))
 		})
-		flush.times <- as.data.frame(data.table::rbindlist(aux))
 		rm(aux)
+
+		flush.times <- as.data.frame(data.table::rbindlist(recipient))
 	} else {
 		paint_flush <- FALSE
 	}
 
-	if (temperature) {
-		to.melt.ox   <- input[, grepl("^Date.Time$|^Phase$|^Ox.[0-9]", colnames(input))]
-		to.melt.temp <- input[, grepl("^Date.Time$|^Phase$|^Temp.[0-9]$", colnames(input))]
-		
-		aux.ox <- reshape2::melt(to.melt.ox, id.vars = c("Phase", "Date.Time"))
-		colnames(aux.ox)[grepl("value", colnames(aux.ox))] <- "Oxygen"
-
-		aux.temp <- reshape2::melt(to.melt.temp, id.vars = c("Phase", "Date.Time"))
-		colnames(aux.temp)[grepl("value", colnames(aux.temp))] <- "Temperature"
-		
-		plotdata <- cbind(aux.ox, Temperature = aux.temp$Temperature)
-
-	}	else {
-		to.melt <- input[, grepl("^Date.Time$|^Phase$|^Ox.[0-9]", colnames(input))]
-		plotdata <- reshape2::melt(to.melt, id.vars = c("Phase", "Date.Time"))
-		colnames(plotdata)[grepl("value", colnames(plotdata))] <- "Oxygen"
-	}
-
-	plotdata$Chamber <- paste0('CH', substrRight(as.character(plotdata$variable), 1))
+	input$Oxygen <- input$O2 #to eliminate the units part
 
 	Date.Time <- Temperature <- Oxygen <- Chamber <- NULL
 	xmin <- xmax <- ymin <- ymax <- NULL
 
-	p <- ggplot2::ggplot(data = plotdata, ggplot2::aes(x = Date.Time))
+	p <- ggplot2::ggplot(data = input, ggplot2::aes(x = Date.Time))
 
 	if (paint_flush)
 		p <- p + ggplot2::geom_rect(data = flush.times, ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax), fill = "black", alpha = 0.1)
@@ -209,11 +207,11 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 	p <- p + ggplot2::theme_bw()
 
 	if (temperature) {
-		aux <- range(plotdata$Oxygen)
+		aux <- range(input$Oxygen)
 		ox.range <- aux[2] - aux[1]
 		ox.mid <- mean(aux)
 
-		aux <- range(plotdata$Temperature)
+		aux <- range(input$Temp)
 		temp.range <- aux[2] - aux[1]
 		temp.mid <- mean(aux)
 
@@ -233,7 +231,7 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 		  (y + a * c.factor - b) / c.factor # = x
 		}
 
-		p <- p + ggplot2::geom_line(ggplot2::aes(y = data.link(Temperature), col = "Temperature", group = Phase))
+		p <- p + ggplot2::geom_line(ggplot2::aes(y = data.link(Temp), col = "Temperature", group = Phase))
  		p <- p + ggplot2::scale_y_continuous(sec.axis = ggplot2::sec_axis(trans = axis.link, name = "Temperature"))
 		p <- p + ggplot2::scale_colour_manual(values = c("royalblue", "red"))
 	} else {
@@ -242,7 +240,7 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 	p <- p + ggplot2::theme(legend.position = "none") 
 
 	p <- p + ggplot2::labs(y = oxygen.label, x = "Time")
-	p <- p + ggplot2::facet_wrap(Chamber ~ ., ncol = 1)
+	p <- p + ggplot2::facet_wrap(Chamber.No ~ ., ncol = 1)
 
 	return(p)
 }
@@ -320,18 +318,18 @@ plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = F
 	if (verbose)
 		message('Plotting measurements')
 
-	p1 <- plot_meas(mr$phased, oxygen.label = oxygen.label, cycles = cycles, chamber = chamber, temperature = TRUE) 
+	p1 <- plot_meas(mr$meas_raw, oxygen.label = oxygen.label, cycles = cycles, chamber = chamber, temperature = TRUE) 
 	p1 <- p1 + labs(title = title, x = '')
 	
 	if (verbose)
 		message('Plotting deltas')
 
-	B <- plot_deltas(mr$corrected, cycles = cycles, chambers = i, raw_delta_col = raw_delta_col) + mimic_x(p1)
+	B <- plot_deltas(mr$corrected, cycles = cycles, chambers = chamber, raw_delta_col = raw_delta_col) + mimic_x_datetime(p1)
 
 	if (verbose)
 		message('Plotting plotting slopes')
 
-	p2 <- plot_slopes(mr$all.slopes, cycles = cycles, chambers = i) + mimic_x(p1) + xlab('')
+	p2 <- plot_slopes(mr$all.slopes, cycles = cycles, chambers = chamber) + mimic_x_datetime(p1) + xlab('')
 
 	if (smr)
 		the_smr <- mr$smr
@@ -346,17 +344,29 @@ plot_experiment <- function(pre, post, mr, cycles, chamber, smr = FALSE, mmr = F
 	if (verbose)
 		message('Plotting metabolic rate')
 
-	p3 <- plot_mr(MR = mr$mr, SMR = the_smr, MMR = the_mmr, chambers = i, 
+	p3 <- plot_mr(MR = mr$mr, SMR = the_smr, MMR = the_mmr, chambers = chamber, 
 		  target_col = mr.col, ylabel = mr.label)
-	p3 <- p3 + mimic_x(p1)
+	p3 <- p3 + mimic_x_datetime(p1)
 
 	to.print <- p_pre + p_post + p1 + B + p2 + p3 + plot_layout(design = 'AB\nCC\nDD\nEE\nFF')
 
 	return(to.print)
 }
 
-mimic_x <- function(input) {
+mimic_x_datetime <- function(input) {
 	ggplot2::xlim(as.POSIXct(ggplot2::layer_scales(input)$x$range$range, origin = "1970-01-01 00:00.00"))	
+}
+
+mimic_y_datetime <- function(input) {
+	ggplot2::ylim(as.POSIXct(ggplot2::layer_scales(input)$y$range$range, origin = "1970-01-01 00:00.00"))	
+}
+
+mimic_x <- function(input) {
+	ggplot2::xlim(ggplot2::layer_scales(input)$x$range$range)
+}
+
+mimic_y <- function(input) {
+	ggplot2::ylim(ggplot2::layer_scales(input)$y$range$range)
 }
 
 
@@ -368,7 +378,7 @@ mimic_x <- function(input) {
 #' 
 #' @export
 #' 
-plot_bg <- function(obs, bg, chambers, O2_col = O2.delta.raw, mean.lwd = 1.5) {
+plot_bg <- function(obs, bg, chambers, O2_col, mean.lwd = 1.5) {
 
 	if (!missing(chambers)) {
 		if (is.numeric(chambers))

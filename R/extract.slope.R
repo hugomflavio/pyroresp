@@ -198,7 +198,7 @@ extract.slope <- function(slopes, method = c("all", "min", "max", "lower.tail", 
       } else {
         if (issue.low.sample.size.warning) {
           warning('The calcSMR.low10pc method does not work well with less than 15 measurements (optimally at least 25).', immediate. = TRUE, call. = FALSE)
-          issue.low.sample.size.warning <<- FALSE
+          issue.low.sample.size.warning <<- FALSE # we are inside an lapply here, hence the assignment outside of the current environment
         }
         aux <- aux[1, , drop = FALSE]
       }
@@ -208,7 +208,7 @@ extract.slope <- function(slopes, method = c("all", "min", "max", "lower.tail", 
       } else {
         if (issue.low.sample.size.warning) {
           warning('The calcSMR.low10pc method does not work well with less than 15 measurements (optimally at least 25).', immediate. = TRUE, call. = FALSE)
-          issue.low.sample.size.warning <<- FALSE
+          issue.low.sample.size.warning <<- FALSE # we are inside an lapply here, hence the assignment outside of the current environment
         }
         aux <- aux[1, , drop = FALSE]
       }

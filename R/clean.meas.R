@@ -9,64 +9,71 @@
 #' 
 clean.meas <- function(input, wait = 0, auto.cut.last = FALSE){
 
-  MR.data.all <- input  
-  MR.data.all$Date <- as.Date(MR.data.all$Date.Time)
-  MR.data.all$Real.Time <- chron::times(strftime(MR.data.all$Date.Time, "%H:%M:%S"))
-  
-  #--------------------------------------------------------------------------------------------------------------------------------------------------#
-  # Removing Non-Measurement Data
-  #--------------------------------------------------------------------------------------------------------------------------------------------------#
-  
-  MR.data.all <- MR.data.all[grepl("^M", MR.data.all$Phase), ]
-  
-  phase.order <- as.numeric(gsub("[M]", "", unique(MR.data.all$Phase)))
+  input$Date <- as.Date(input$Date.Time)
+  input$Real.Time <- chron::times(strftime(input$Date.Time, "%H:%M:%S"))
 
+  # Removing Non-Measurement Data  
+  input <- input[grepl("^M", input$Phase), ]
+  
+  # this is used just to ensure that the phases maintain their order,
+  # even it they don't start at one or are not sorted at the start.
+  phase.order <- as.numeric(gsub("[M]", "", unique(input$Phase)))
   phase.order <- phase.order - min(phase.order) + 1
   
-  MR.data.all$Phase <- factor(MR.data.all$Phase, levels = unique(MR.data.all$Phase)[phase.order])
+  input$Phase <- factor(input$Phase, levels = unique(input$Phase)[phase.order])
 
-  rm(phase.order)
 
-  #--------------------------------------------------------------------------------------------------------------------------------------------------#
-  # Removing the final measurement Phase (tail error)
-  #--------------------------------------------------------------------------------------------------------------------------------------------------#
-  rows.per.phase <- table(MR.data.all$Phase)
+  #the rest has to be done on a chamber by chamber basis.
 
-  if (length(rows.per.phase) > 1)
-    mean.rows.per.phase <- mean(rows.per.phase[-length(rows.per.phase)])
-  else
-    mean.rows.per.phase <- rows.per.phase
-  
-  if (tail(rows.per.phase, 1) < wait | auto.cut.last) {
-    MR.data.all <- MR.data.all[MR.data.all$Phase != tail(levels(MR.data.all$Phase), 1), ]
-    MR.data.all$Phase <- droplevels(MR.data.all$Phase)
-  }
+  by.chamber <- split(input, input$Chamber.No)
 
-  rm(rows.per.phase, mean.rows.per.phase)
+  recipient <- lapply(names(by.chamber), function(the.chamber) {
 
-  # cut off first n rows from 'M' phase
-  if(wait != 0){
-    idx <- unlist(tapply(1:nrow(MR.data.all), MR.data.all$Phase, tail, -(wait)), use.names=FALSE)
-    MR.data.all <- MR.data.all[idx, ]
-    rm(idx)
-  }
+    trimmed.db <- by.chamber[[the.chamber]]
 
-  row.names(MR.data.all) <- 1:nrow(MR.data.all)
+    # Removing the final measurement Phase if necessary or forced (tail error)
+    rows.per.phase <- table(trimmed.db$Phase)
 
-  aux <- split(MR.data.all, MR.data.all$Phase)
+    if (length(rows.per.phase) > 1)
+      mean.rows.per.phase <- mean(rows.per.phase[-length(rows.per.phase)])
+    else
+      mean.rows.per.phase <- rows.per.phase
 
-  aux <- aux[sapply(aux, nrow) > 0]
-  
-  aux <- lapply(aux, function(x) {
-    x$Start.Meas <- x$Real.Time[1]
-    x$End.Meas <- x$Real.Time[nrow(x)]
-    x$Phase.Time <- as.numeric(difftime(x$Date.Time, x$Date.Time[1], units = 's'))
+    if (tail(rows.per.phase, 1) < wait | auto.cut.last) {
+      trimmed.db <- trimmed.db[trimmed.db$Phase != tail(levels(trimmed.db$Phase), 1), ]
+      trimmed.db$Phase <- droplevels(trimmed.db$Phase)
+    }
 
-    return(x)
+
+    # cut off first n rows from 'M' phase
+    if(wait != 0){
+      # the code below grabs the 1:nrow vector, breaks it out by phase, and then uses tail() with
+      # a negative n to grab all numbers but the first 30 that show up for each phase.
+      index <- unlist(tapply(1:nrow(trimmed.db), trimmed.db$Phase, tail, -(wait)), use.names = FALSE)
+      trimmed.db <- trimmed.db[index, ]
+    }
+
+    # reset rownames
+    row.names(trimmed.db) <- 1:nrow(trimmed.db)
+
+    # and now, by phase, calculate the passing time and store the start and end points of that measurement
+    aux <- split(trimmed.db, trimmed.db$Phase)
+
+    aux <- aux[sapply(aux, nrow) > 0]
+
+    aux <- lapply(aux, function(x) {
+      x$Start.Meas <- x$Real.Time[1]
+      x$End.Meas <- x$Real.Time[nrow(x)]
+      x$Phase.Time <- as.numeric(difftime(x$Date.Time, x$Date.Time[1], units = 's'))
+
+      return(x)
+    })
+    trimmed.db <- as.data.frame(data.table::rbindlist(aux))
+ 
+    return(trimmed.db)
   })
-  MR.data.all <- as.data.frame(data.table::rbindlist(aux))
-  
-  rm(aux)
 
-  return(MR.data.all)
+  output <- as.data.frame(data.table::rbindlist(recipient))
+
+  return(output)
 }

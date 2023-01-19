@@ -62,7 +62,7 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw',
 
   method <- match.arg(method)
 
-  M.total <- max(as.numeric(gsub("(F|M)", "", unique(meas.data$Phase))))
+  M.total <- max(meas.data$Cycle)
 
   if(method == "pre.test"){
 
@@ -114,56 +114,22 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw',
 
 
   if(method == "linear"){
-    stop('this method needs to be updated')
+    my_bg <- calculate_linear_bg_progression(pre.bg = pre.bg, post.bg = post.bg, meas.data = meas.data)
 
+    meas.data$temporary_index <- paste(meas.data$Cycle, meas.data$Chamber.No, meas.data$Phase.Time)
 
-    O2.background <- sapply(1:nrow(meas.data), function(i) {
-      row <- which(post.bg$Chamber.No == meas.data$Chamber.No[i] & post.bg$Phase.Time == meas.data$Phase.Time[i])
-      
-      if (length(row) == 0)
-        return(NA)
-      else
-        return(post.bg$O2.background[row])
-    })
+    my_bg$temporary_index <- paste(my_bg$Cycle, my_bg$Chamber.No, my_bg$Phase.Time)
 
-    if (any(is.na(O2.background)))
+    link <- match(meas.data$temporary_index, my_bg$temporary_index)
+
+    meas.data$O2.background <- my_bg$O2.delta[link]
+
+    meas.data$temporary_index <- NULL
+    
+    if (any(is.na(meas.data$O2.background)))
       warning('Some measurement phases are longer than the background. Discarding overextended points', immediate. = TRUE, call. = FALSE)
 
-    meas.data$O2.background <- O2.background
-    meas.data <- meas.data[!is.na(O2.background), ]
-
-
-
-
-    # The operation is done by phase and by chamber, so the dataset is broken twice below
-    by.chamber <- split(meas.data, meas.data$Chamber.No) # first by chamber
-
-    recipient <- lapply(names(by.chamber), function(the.chamber) { # use the chamber names so the respective pre and post data can be extracted
-
-      
-
-      by.phase <- split(by.chamber[[the.chamber]], by.chamber[[the.chamber]]$Phase) # now by phase
-
-      recipient <- lapply(names(by.phase), function(the.phase) { # use the phase names so the phase i can be extracted
-        phase.i <- as.numeric(gsub("(F|M)", "", the.phase))
-
-        phase.lm <- pre.lm
-
-        # adjust lm weights based on phase distance to the pre and post data
-        phase.lm$coefficients[1] <- 0
-        phase.lm$coefficients[2] <- (1 - phase.i / (M.total + 1)) * pre.lm$coefficients[2] + phase.i / (M.total + 1) * post.lm$coefficients[2]
-
-        # store values, done.
-        by.phase[[the.phase]]$O2.background <- as.vector(predict.lm(phase.lm, by.phase[[the.phase]], type = "response", se.fit = FALSE))
-
-        return(by.phase[[the.phase]])
-      })
-      # start rebinding back to a dataframe
-      output <- data.table::rbindlist(recipient)
-      return(output)
-    })
-
-    meas.data <- as.data.frame(data.table::rbindlist(recipient))
+    meas.data <- meas.data[!is.na(meas.data$O2.background), ]
   }
 
   if(method == "exponential"){
@@ -215,67 +181,47 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw',
 
 
 
-#' dummy doc
-#' 
-#' @export
-#' 
-calculate.bg <- function(input, O2_col = 'O2.delta.raw', method = c('mean', 'first', 'last'), force.linear = TRUE, smoothing = 30){
 
-  method <- match.arg(method)
 
-  n.phases <- unique(input$Phase)
 
-  if (method == 'first')
-    input <- input[input$Phase == n.phases[1], ]
-    
-  if (method == 'last')
-    input <- input[input$Phase == n.phases[length(n.phases)], ]
 
-  chamber.lists <- split(input, input$Chamber.No)
+calculate_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
+  cycles <- max(meas.data$Cycle)
 
-  bg.lists <- lapply(names(chamber.lists), function(chamber) {
-    # cat(i, '\n')
-    sub.data <- input[input$Chamber.No == chamber, ]
+  my_bg <- lapply(unique(meas.data$Chamber.No), function(chamber) {
 
-    if (force.linear) {
-      bg.lm <- lm(sub.data[, O2_col] ~ sub.data$Phase.Time)
-      bg.lm$coefficients[1] <- 0 
+    pre_line <- pre.bg$O2.background[pre.bg$Chamber.No == chamber]
 
-      output <- data.frame(Phase.Time = 1:max(sub.data$Phase.Time))
-      output$O2.background <- as.vector(predict.lm(bg.lm, output, type = "response", se.fit = FALSE))
-    }
-    else {
-      output <- aggregate(sub.data[, O2_col], by = list(sub.data$Phase.Time), mean)
-      colnames(output) <- c('Phase.Time', 'O2.background')
-      
-      if (smoothing > 1) {
-        x <- filter(output$O2.background, rep(1/smoothing, smoothing), sides = 2)
+    post_line <- post.bg$O2.background[post.bg$Chamber.No == chamber]
 
-        if (smoothing%%2 == 0) {
-          for (i in 1:(smoothing/2-1)) {
-            r <- round(i/2)
-            x[i] <- mean(output$O2.background[(i-r):(i+r)])
-          }
+    if (length(pre_line) != length(post_line))
+      stop("The length of the pre-bg and post-bg in chamber ", chamber, " are not the same!")
 
-          last.value <- length(x) - round(smoothing/2)
-          smooth.values <- (last.value - round(smoothing/2)):last.value
-          smooth.slope <- mean(x[smooth.values-1]-x[smooth.values])
+    difference <- post_line - pre_line
 
-          for (i in (length(x)-(smoothing/2)):length(x)) {
-            x[i] <- x[i-1] - smooth.slope
-          }
-        }
-        output$O2.background <- x
-      }
-    }  
-    return(output)
+    increments <- difference / (cycles - 1)
+
+    my_list <- lapply(1:length(pre_line), function(i) {
+      seq(from = pre_line[i], to = post_line[i], by = increments[i])
+    })
+
+    my_matrix <- as.data.frame(do.call(rbind, my_list))
+
+    return(my_matrix)
   })
-  names(bg.lists) <- names(chamber.lists)
-
-  output <- as.data.frame(data.table::rbindlist(bg.lists, idcol = 'Chamber.No'))
-
-  return(output)
-  }
+  names(my_bg) <- unique(meas.data$Chamber.No)
 
 
 
+  my_bg_simplified <- lapply(names(my_bg), function(chamber) {
+    x <- suppressMessages(reshape2::melt(my_bg[[chamber]]))
+    colnames(x) <- c("Cycle", "O2.delta")
+    x$Phase.Time <- 1:nrow(my_bg[[chamber]])
+    x$Cycle <- as.numeric(sub("V", "", x$Cycle))
+    x$Chamber.No <- chamber
+    return(x)
+  })
+
+  my_bg_df <- do.call(rbind, my_bg_simplified)
+  return(my_bg_df)
+}
