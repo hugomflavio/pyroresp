@@ -194,8 +194,14 @@ calculate_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
 
     post_line <- post.bg$O2.background[post.bg$Chamber.No == chamber]
 
-    if (length(pre_line) != length(post_line))
-      stop("The length of the pre-bg and post-bg in chamber ", chamber, " are not the same!")
+    if (length(pre_line) != length(post_line)) {
+      warning("The pre-bg and post-bg in chamber ", chamber, " have different lengths! Truncating longer vector.", immediate. = TRUE, call. = FALSE)
+      
+      if (length(pre_line) < length(post_line))
+        post_line <- post_line[1:length(pre_line)]
+      else
+        pre_line <- post_line[1:length(post_line)]
+    }
 
     difference <- post_line - pre_line
 
