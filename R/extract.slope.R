@@ -4,12 +4,17 @@
 #' 
 calc.slope <- function(input, O2_raw = 'O2.raw', max.length = Inf) {
   # The operation is done by phase and by chamber, so the dataset is broken twice below
-  by.chamber <- split(input, input$Chamber.No) # first by chamber
+  by.chamber <- split(input, input$Probe) # first by chamber
 
+  # debug.count.a <- 0
   recipient <- lapply(by.chamber, function(the.chamber) {
+    # debug.count.a <<- debug.count.a + 1
     by.phase <- split(the.chamber, the.chamber$Phase) # now by phase
+    by.phase <- by.phase[sapply(by.phase, nrow) > 0]
 
+    # debug.count.b <- 0
     recipient <- lapply(by.phase, function(the.phase) {
+      # debug.count.b <<- debug.count.b + 1
       trimmed.phase <- the.phase[the.phase$Phase.Time <= max.length, ]
 
       fm <- as.formula(paste(O2_raw, '~ Phase.Time'))
@@ -17,7 +22,7 @@ calc.slope <- function(input, O2_raw = 'O2.raw', max.length = Inf) {
 
       model.without.BR <- lm(O2.corrected ~ Phase.Time, data = trimmed.phase)
 
-      output <- data.frame(Chamber.No = trimmed.phase$Chamber.No[1],
+      output <- data.frame(Probe = trimmed.phase$Probe[1],
                            ID = trimmed.phase$ID[1],
                            Mass = trimmed.phase$Mass[1],
                            Volume = trimmed.phase$Volume[1],
@@ -117,7 +122,7 @@ extract.slope <- function(slopes, method = c("all", "min", "max", "lower.tail", 
 
   slopes <- slopes[slopes$R2 >= r2, ]
   
-  by.chamber <- split(slopes, slopes$Chamber.No)
+  by.chamber <- split(slopes, slopes$Probe)
 
   issue.low.sample.size.warning <- TRUE
   recipient <- lapply(by.chamber, function(the.chamber) {

@@ -65,7 +65,6 @@ load_wide_coolterm_file <- function(file, max.gap.fix = 1) {
 	phases <- as.data.frame(data.table::fread(file, tz = ""))
 	colnames(phases)[1] <- "Timestamp"
 	phases$Timestamp <- as.POSIXct(phases$Timestamp, tz = Sys.timezone())
-
 	# extract start and stop times for each channel 
 	output <- lapply(grep("Phase", colnames(phases)), function(p) {
 		breaks <- rle(phases[, p])
@@ -80,22 +79,32 @@ load_wide_coolterm_file <- function(file, max.gap.fix = 1) {
 	names(output) <- paste0("CH", 1:length(output))
 
 	# check start and stop times for gaps/overlaps
+	overlap_instances <- 0
+	max_overlap <- 0
+
+	gap_instances <- 0
+	max_gap <- 0
+	fixed_gaps <- 0
 	output <- lapply(output, function(x) {
 		if (any(check <- x$Start[-1] <= x$Stop[-nrow(x)])) {
-			maxoverlap <- max(as.numeric(difftime(x$Start[which(check) + 1], x$Stop[check])) + 1)
-			warning("Found ", sum(check), " overlapping phase(s)! Maximum overlap: ", maxoverlap, " second(s). Saving troublesome rows in attributes", call. = FALSE, immediate. = TRUE)
-			attributes(x)$overlaps <- which(check)
+			overlap_instances <<- sum(overlap_instances, check)
+			conflict_starts <- x$Start[which(check) + 1]
+			conflict_ends <- x$Stop[which(check)]
+			overlaps <- as.numeric(difftime(conflict_starts, conflict_ends)) + 1
+			max_overlap <<- max(max_overlap, overlaps)
 		}
 
 		aux <- as.numeric(difftime(x$Start[-1], x$Stop[-nrow(x)])) - 1
 		if (any(aux > 0)) {
-			warning("Found ", sum(aux > 0), " time gap(s) between phases! Maximum gap: ", max(aux), " second(s). Saving troublesome rows in attributes.", call. = FALSE, immediate. = TRUE)
+			gap_instances <<- sum(gap_instances, aux > 0)
+			max_gap <<- max(max_gap, aux)
+			
 			auto.gaps <- which(aux > 0 & aux <= max.gap.fix)
+			fixed_gaps <<- sum(fixed_gaps, length(auto.gaps))
+
 			if (length(auto.gaps) > 0) {
 				x$Stop[auto.gaps] <- x$Stop[auto.gaps] + aux[auto.gaps]
-				message("M: Auto-fixed ", length(auto.gaps), " gaps by extending the previous phase.")
 			}
-			attributes(x)$gaps <- which(aux > 0)
 		}
 
 		aux <- table(rle(x$Phase)$values)
@@ -105,6 +114,15 @@ load_wide_coolterm_file <- function(file, max.gap.fix = 1) {
 
 		return(x)
 	})
+
+	if (overlap_instances > 0) {
+		warning("Found ", overlap_instances, " overlapping phase(s)! Maximum overlap: ", max_overlap, " second(s).", call. = FALSE, immediate. = TRUE)
+	}
+
+	if (gap_instances > 0) {
+		warning("Found ", gap_instances, " time gap(s) between phases! Maximum gap: ", max_gap, " second(s).", call. = FALSE, immediate. = TRUE)
+		message("M: Auto-fixed ", fixed_gaps, " gaps by extending the previous phase.")
+	}
 
 	return(output)
 }
@@ -156,33 +174,38 @@ merge_pyroscience_coolterm <- function(pyroscience, coolterm) {
 merge_pyroscience_wide_coolterm <- function(pyroscience, coolterm) {
 	pyroscience$Phase <- NULL
 
-	tmp <- lapply(1:length(coolterm), function(ch) {
-		# create column with placeholders
-		pyroscience[, paste0("Phase.", ch)] <- "F0"
+	new_col_order <- 1
 
-		# assign phases
-		for (i in 1:nrow(coolterm[[ch]])) {
-			this.phase <- pyroscience$Date.Time >= coolterm[[ch]]$Start[i] & pyroscience$Date.Time <= coolterm[[ch]]$Stop[i]
-			pyroscience[this.phase, paste0("Phase.", ch)] <- coolterm[[ch]]$Phase[i]
-		}
+	tmp <- lapply(1:length(coolterm), function(device) {
+		lapply(1:length(coolterm[[device]]), function(probe) {
+			# create column with placeholders
+			pyroscience[, paste0("Phase.", names(coolterm)[device], probe)] <- "F0"
 
-		if (any(check <- is.na(pyroscience[, paste0("Phase.", ch)])))
-			warning(sum(check), " measurement(s) in chamber ", ch, " could not be assigned to a phase!", call. = FALSE, immediate. = TRUE)
+			# assign phases
+			# cat(device) # debug messages
+			# cat(probe) # debug messages
+			for (i in 1:nrow(coolterm[[device]][[probe]])) {
+				this.phase <- pyroscience$Date.Time >= coolterm[[device]][[probe]]$Start[i] & pyroscience$Date.Time <= coolterm[[device]][[probe]]$Stop[i]
+				pyroscience[this.phase, paste0("Phase.", names(coolterm)[device], probe)] <- coolterm[[device]][[probe]]$Phase[i]
+			}
 
-		pyroscience[, paste0("Phase.", ch)] <- factor(pyroscience[, paste0("Phase.", ch)], levels = unique(pyroscience[, paste0("Phase.", ch)]))
-	
+			if (any(check <- is.na(pyroscience[, paste0("Phase.", names(coolterm)[device], probe)])))
+				warning(sum(check), " measurement(s) in device ",device, ", probe ", probe, " could not be assigned to a phase!", call. = FALSE, immediate. = TRUE)
+
+			pyroscience[, paste0("Phase.", names(coolterm)[device], probe)] <- factor(pyroscience[, paste0("Phase.", names(coolterm)[device], probe)], levels = unique(pyroscience[, paste0("Phase.", names(coolterm)[device], probe)]))
+		
+			# export pyroscience object to outside of the lapply loop
+			pyroscience <<- pyroscience
+
+			new_col_order <<- c(new_col_order, grep(paste0(names(coolterm)[device], probe), colnames(pyroscience)))
+		})
 		# export pyroscience object to outside of the lapply loop
 		pyroscience <<- pyroscience
+		new_col_order <<- new_col_order
 	})
 	rm(tmp)
-
-	new.col.order <- c(1, 
-					   which(grepl(".1", colnames(pyroscience))),
-					   which(grepl(".2", colnames(pyroscience))),
-					   which(grepl(".3", colnames(pyroscience))),
-					   which(grepl(".4", colnames(pyroscience))))
 	
-	pyroscience <- pyroscience[, new.col.order]
+	pyroscience <- pyroscience[, new_col_order]
 
 	return(pyroscience)
 }

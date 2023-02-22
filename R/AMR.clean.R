@@ -13,7 +13,7 @@
 #'   \item{Phase}{the type of phase and an ordinal number of measurements (e.g. M1, F3)}
 #'   \item{Start.Meas}{the first second of a measurement phase (hh:mm:ss)}
 #'   \item{End.Meas}{the last second of a measurement phase (hh:mm:ss)}
-#'   \item{Chamber.No}{the number of a chamber}
+#'   \item{Probe}{the number of a chamber}
 #'   \item{Ind}{ID of an animal}
 #'   \item{Mass}{wet mass of an animal (g)}
 #'   \item{Volume}{the volume of a chamber (mL)}

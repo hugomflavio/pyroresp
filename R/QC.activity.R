@@ -26,16 +26,16 @@
 #' @export
 
 QC.activity <- function(clean.data, compare = TRUE, output = FALSE){
-  Chamber.No<-NULL
+  Probe<-NULL
   slope.data.all<-extract.slope(clean.data, r2=0, method = "all")
   MR.data.all<-calculate.MR(slope.data.all, density = 1000,
                             plot.BR = FALSE, plot.MR.abs = FALSE, plot.MR.mass = FALSE)
-  a <- nlevels(MR.data.all$Chamber.No)
+  a <- nlevels(MR.data.all$Probe)
 
   if(compare == TRUE){
     BW = MR.data.all$Mass/1000
     MR.mass.with.BR <- MR.data.all$MR.abs.with.BR/BW
-    a <- xyplot(MR.mass + MR.mass.with.BR ~ Date.Time, groups=Chamber.No, grid = TRUE,
+    a <- xyplot(MR.mass + MR.mass.with.BR ~ Date.Time, groups=Probe, grid = TRUE,
            data=MR.data.all, main="Activity during the whole period of measurements",
            type=c("a", "p"), allow.multiple=T, layout=(c(1,2)),
            xlab="Time", ylab = bquote("Mass-specific metabolic rate (" ~ .(clean.data$DO.unit[1]) ~ kg^-1 ~ h^-1 ~ ")"),
@@ -48,7 +48,7 @@ QC.activity <- function(clean.data, compare = TRUE, output = FALSE){
     plot(a)
     }
   else{
-    b <- xyplot(MR.mass ~ Date.Time, groups=Chamber.No, grid = TRUE,
+    b <- xyplot(MR.mass ~ Date.Time, groups=Probe, grid = TRUE,
            data=MR.data.all, main="Activity during the whole period of measurements",
            type=c("a", "p", lwd = 2),
            xlab="Time", ylab = bquote("Mass-specific metabolic rate (" ~ .(clean.data$DO.unit[1]) ~ kg^-1 ~ h^-1 ~ ")"),

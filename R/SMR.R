@@ -6,7 +6,7 @@
 #' @usage SMR
 #' @format A data frame with 12 rows and 16 variables:
 #' \describe{
-#'   \item{Chamber.No}{the number of a chamber}
+#'   \item{Probe}{the number of a chamber}
 #'   \item{Ind}{ID of an animal}
 #'   \item{Mass}{wet mass of an animal (g)}
 #'   \item{Volume}{the volume of a chamber (mL)}

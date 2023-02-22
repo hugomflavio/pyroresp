@@ -65,45 +65,25 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw',
   M.total <- max(meas.data$Cycle)
 
   if(method == "pre.test"){
+    my_bg <- pre.bg
 
-    O2.background <- sapply(1:nrow(meas.data), function(i) {
-      row <- which(pre.bg$Chamber.No == meas.data$Chamber.No[i] & pre.bg$Phase.Time == meas.data$Phase.Time[i])
-      
-      if (length(row) == 0)
-        return(NA)
-      else
-        return(pre.bg$O2.background[row])
-    })
+    meas.data$temporary_index <- paste(meas.data$Probe, meas.data$Phase.Time)
 
-    if (any(is.na(O2.background)))
-      warning('Some measurement phases are longer than the background. Discarding overextended points', immediate. = TRUE, call. = FALSE)
-
-    meas.data$O2.background <- O2.background
-    meas.data <- meas.data[!is.na(O2.background), ]
+    my_bg$temporary_index <- paste(my_bg$Probe, my_bg$Phase.Time)
   }
 
   if(method == "post.test"){
+    my_bg <- post.bg
 
-    O2.background <- sapply(1:nrow(meas.data), function(i) {
-      row <- which(post.bg$Chamber.No == meas.data$Chamber.No[i] & post.bg$Phase.Time == meas.data$Phase.Time[i])
-      
-      if (length(row) == 0)
-        return(NA)
-      else
-        return(post.bg$O2.background[row])
-    })
+    meas.data$temporary_index <- paste(meas.data$Probe, meas.data$Phase.Time)
 
-    if (any(is.na(O2.background)))
-      warning('Some measurement phases are longer than the background. Discarding overextended points', immediate. = TRUE, call. = FALSE)
-
-    meas.data$O2.background <- O2.background
-    meas.data <- meas.data[!is.na(O2.background), ]
+    my_bg$temporary_index <- paste(my_bg$Probe, my_bg$Phase.Time)
   }
 
   if(method == "average"){
     stop("average has not been updated yet")
-    pre.link <- pre.bg$Chamber.No == meas.data$Chamber.No & pre.bg$Phase.Time == meas.data$Phase.time
-    post.link <- post.bg$Chamber.No == meas.data$Chamber.No & post.bg$Phase.Time == meas.data$Phase.time
+    pre.link <- pre.bg$Probe == meas.data$Probe & pre.bg$Phase.Time == meas.data$Phase.time
+    post.link <- post.bg$Probe == meas.data$Probe & post.bg$Phase.Time == meas.data$Phase.time
 
     recipient <- data.frame(pre = pre.bg[pre.link], post = post.bg[post.link])
 
@@ -116,20 +96,10 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw',
   if(method == "linear"){
     my_bg <- calculate_linear_bg_progression(pre.bg = pre.bg, post.bg = post.bg, meas.data = meas.data)
 
-    meas.data$temporary_index <- paste(meas.data$Cycle, meas.data$Chamber.No, meas.data$Phase.Time)
+    meas.data$temporary_index <- paste(meas.data$Cycle, meas.data$Probe, meas.data$Phase.Time)
 
-    my_bg$temporary_index <- paste(my_bg$Cycle, my_bg$Chamber.No, my_bg$Phase.Time)
+    my_bg$temporary_index <- paste(my_bg$Cycle, my_bg$Probe, my_bg$Phase.Time)
 
-    link <- match(meas.data$temporary_index, my_bg$temporary_index)
-
-    meas.data$O2.background <- my_bg$O2.delta[link]
-
-    meas.data$temporary_index <- NULL
-    
-    if (any(is.na(meas.data$O2.background)))
-      warning('Some measurement phases are longer than the background. Discarding overextended points', immediate. = TRUE, call. = FALSE)
-
-    meas.data <- meas.data[!is.na(meas.data$O2.background), ]
   }
 
   if(method == "exponential"){
@@ -144,8 +114,8 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw',
 
     y<-NULL
     for (i in b){
-      temp.lm1<-lm(O2.background ~ Phase.Time, data = subset(pre.data, Chamber.No=="CH1"))
-      temp.lm2<-lm(O2.background ~ Phase.Time, data = subset(post.data, Chamber.No=="CH1"))
+      temp.lm1<-lm(O2.background ~ Phase.Time, data = subset(pre.data, Probe=="CH1"))
+      temp.lm2<-lm(O2.background ~ Phase.Time, data = subset(post.data, Probe=="CH1"))
       exp.coef<-sign(temp.lm2$coefficients[2] / temp.lm1$coefficients[2]) * abs(temp.lm2$coefficients[2] / temp.lm1$coefficients[2])^(1 / (M.total + 1))
       pro = temp.lm1$coefficients[2] * exp.coef^i
       temp.lm1$coefficients[1] <- 0
@@ -160,13 +130,25 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw',
     rm(list = c("temp.lm1", "temp.lm2", "a", "b", "i", "x", "y", "pro", "exp.coef"))
   }
 
-  if(method == "none")
+  if(method == "none") {
     meas.data$O2.background <- 0
+  } else {
+    link <- match(meas.data$temporary_index, my_bg$temporary_index)
+
+    meas.data$O2.background <- my_bg$O2.background[link]
+
+    meas.data$temporary_index <- NULL
+    
+    if (any(is.na(meas.data$O2.background)))
+      warning('Some measurement phases are longer than the background. Discarding overextended points', immediate. = TRUE, call. = FALSE)
+
+    meas.data <- meas.data[!is.na(meas.data$O2.background), ]
+  }
 
   #--------------------------------------------------------------------------------------------------------------------------------------------------#
   meas.data$O2.corrected <- meas.data[, O2_col] - meas.data$O2.background
 
-  aux <- split(meas.data, paste0(meas.data$Chamber.No, meas.data$Phase))
+  aux <- split(meas.data, paste0(meas.data$Probe, meas.data$Phase))
   aux <- lapply(aux, function(x) {
     x$O2.delta.corrected <- x$O2.corrected - x$O2.corrected[1]
     return(x)
@@ -188,11 +170,11 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw',
 calculate_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
   cycles <- max(meas.data$Cycle)
 
-  my_bg <- lapply(unique(meas.data$Chamber.No), function(chamber) {
+  my_bg <- lapply(unique(meas.data$Probe), function(chamber) {
 
-    pre_line <- pre.bg$O2.background[pre.bg$Chamber.No == chamber]
+    pre_line <- pre.bg$O2.background[pre.bg$Probe == chamber]
 
-    post_line <- post.bg$O2.background[post.bg$Chamber.No == chamber]
+    post_line <- post.bg$O2.background[post.bg$Probe == chamber]
 
     if (length(pre_line) != length(post_line)) {
       warning("The pre-bg and post-bg in chamber ", chamber, " have different lengths! Truncating longer vector.", immediate. = TRUE, call. = FALSE)
@@ -215,16 +197,16 @@ calculate_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
 
     return(my_matrix)
   })
-  names(my_bg) <- unique(meas.data$Chamber.No)
+  names(my_bg) <- unique(meas.data$Probe)
 
 
 
   my_bg_simplified <- lapply(names(my_bg), function(chamber) {
     x <- suppressMessages(reshape2::melt(my_bg[[chamber]]))
-    colnames(x) <- c("Cycle", "O2.delta")
+    colnames(x) <- c("Cycle", "O2.background")
     x$Phase.Time <- 1:nrow(my_bg[[chamber]])
     x$Cycle <- as.numeric(sub("V", "", x$Cycle))
-    x$Chamber.No <- chamber
+    x$Probe <- chamber
     return(x)
   })
 

@@ -6,7 +6,7 @@
 #' @usage results
 #' @format A data frame with 36 rows and 18 variables:
 #' \describe{
-#'   \item{Chamber.No}{The number of a chamber}
+#'   \item{Probe}{The number of a chamber}
 #'   \item{Ind}{ID of an animal}
 #'   \item{Mass}{wet mass of an animal (g)}
 #'   \item{Volume}{the volume of a chamber (mL)}

@@ -25,7 +25,7 @@ clean.meas <- function(input, wait = 0, auto.cut.last = FALSE){
 
   #the rest has to be done on a chamber by chamber basis.
 
-  by.chamber <- split(input, input$Chamber.No)
+  by.chamber <- split(input, input$Probe)
 
   recipient <- lapply(names(by.chamber), function(the.chamber) {
 

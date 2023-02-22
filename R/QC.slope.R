@@ -45,15 +45,15 @@ QC.slope <- function(slope.data, clean.data,
   #==================================================================================================================================================#
   ### Plotting Raw Data -- subsetting those values with the minimal oxygen consumption (i.e. lowest resting metabolic rate)
   #--------------------------------------------------------------------------------------------------------------------------------------------------#
-  Chamber.No <- Phase <- m1.df <- m2.df <- Time <- NULL
+  Probe <- Phase <- m1.df <- m2.df <- Time <- NULL
 
-  chlevels<-levels(slope.data$Chamber.No)
+  chlevels<-levels(slope.data$Probe)
   extracted.data<-data.frame(Date.Time=chron(), Date=chron(), Real.Time=times(), Time=integer(), Phase=factor(), Start.Meas=times(), End.Meas=times(),
-                             Chamber.No=factor(), Ind=factor(), Mass=numeric(), Volume=numeric(), Init.O2=numeric(), Temp=numeric(), O2=numeric(), BOD=numeric(), O2.correct=numeric())
+                             Probe=factor(), Ind=factor(), Mass=numeric(), Volume=numeric(), Init.O2=numeric(), Temp=numeric(), O2=numeric(), BOD=numeric(), O2.correct=numeric())
 
   for(i in 1:length(chlevels)){
-    meas<-as.character(subset(slope.data, Chamber.No==chlevels[i])$Phase)
-    chlevels.df<-subset(clean.data, Chamber.No==chlevels[i])
+    meas<-as.character(subset(slope.data, Probe==chlevels[i])$Phase)
+    chlevels.df<-subset(clean.data, Probe==chlevels[i])
     for (m in 1:length(meas)){
       out.df<-subset(chlevels.df, Phase==meas[m])
       row.names(out.df)<-NULL
@@ -68,7 +68,7 @@ QC.slope <- function(slope.data, clean.data,
   rm(m)
   rm(out.df)
 
-  a <-length(slope.data$Chamber.No[slope.data$Chamber.No == chamber])
+  a <-length(slope.data$Probe[slope.data$Probe == chamber])
 
   if (a <= 3){
     par(mfrow = c(a, 1))
@@ -79,7 +79,7 @@ QC.slope <- function(slope.data, clean.data,
     }
 
   rm(a)
-  chamber.df<-subset(extracted.data, Chamber.No == chamber)
+  chamber.df<-subset(extracted.data, Probe == chamber)
   meas<-unique(as.character(chamber.df$Phase))
 
   if(residuals == FALSE){

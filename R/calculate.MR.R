@@ -95,15 +95,15 @@ calculate.MR  <- function(slope.data, density = 1000, plot.BR = FALSE,
 
 #' fraction MR
 #' @export
-fraction_mr <- function(input, chamber, phase, smoothing) {
-  x <- input$corrected[input$corrected$Phase == phase & input$corrected$Chamber.No == chamber, ]
+fraction_mr <- function(input, probe, phase, smoothing) {
+  x <- input$corrected[input$corrected$Phase == phase & input$corrected$Probe == probe, ]
   head(x)
 
   recipient <- lapply(smoothing:nrow(x), function(i) {
     aux_m <- lm(O2.delta.corrected ~ Phase.Time,
           data = x[(i - smoothing + 1):i, ])
     output <- data.frame(
-      Chamber.No = chamber,
+      Probe = probe,
       Phase = phase,
       Sec = i,
       Smoothing = smoothing,
@@ -140,11 +140,11 @@ calculate.bg <- function(input, O2_col, method = c('mean', 'first', 'last'), for
   if (method == 'last')
     input <- input[input$Phase == n.phases[length(n.phases)], ]
 
-  chamber.lists <- split(input, input$Chamber.No)
+  chamber.lists <- split(input, input$Probe)
 
   bg.lists <- lapply(names(chamber.lists), function(chamber) {
     # cat(chamber, '\n')
-    sub.data <- input[input$Chamber.No == chamber, ]
+    sub.data <- input[input$Probe == chamber, ]
 
     if (force.linear) {
 
@@ -182,7 +182,7 @@ calculate.bg <- function(input, O2_col, method = c('mean', 'first', 'last'), for
   })
   names(bg.lists) <- names(chamber.lists)
 
-  output <- as.data.frame(data.table::rbindlist(bg.lists, idcol = 'Chamber.No'))
+  output <- as.data.frame(data.table::rbindlist(bg.lists, idcol = 'Probe'))
 
   return(output)
 }
@@ -197,26 +197,26 @@ override_bg <- function(bg, replace, with) {
   if (!is.data.frame(bg))
     stop("bg must be a data.frame")
 
-  if (all(!grepl("Chamber.No", colnames(bg))))
-    stop("bg must contain a 'Chamber.No' column.")
+  if (all(!grepl("Probe", colnames(bg))))
+    stop("bg must contain a 'Probe' column.")
   
   if (all(!grepl("O2.background", colnames(bg))))
     stop("bg must contain a 'O2.background' column.")
   
-  if (any(!(replace %in% bg$Chamber.No)))
+  if (any(!(replace %in% bg$Probe)))
     stop("Could not find some of the specified chambers to replace in bg")
 
   if (length(with) != 1)
     stop("Please chose only one chamber to use as replacement in 'with'.")
   
-  if (!(with %in% bg$Chamber.No))
+  if (!(with %in% bg$Probe))
     stop("Could not find the replacement chamber in bg")
 
   for (i in replace) {
-    if (sum(bg$Chamber.No == i) > sum(bg$Chamber.No == with))
+    if (sum(bg$Probe == i) > sum(bg$Probe == with))
       stop("the cycle for the replacement chamber is shorted than the cycle for the chamber to be replaced.")
 
-    bg$O2.background[bg$Chamber.No == i] <- bg$O2.background[bg$Chamber.No == with][1:sum(bg$Chamber.No == i)]
+    bg$O2.background[bg$Probe == i] <- bg$O2.background[bg$Probe == with][1:sum(bg$Chamber.No == i)]
     # the additional subset at the end ensures 
   }
 
@@ -233,7 +233,7 @@ calc_delta <- function(input, O2_col) {
 
   input[, paste0('O2.delta', sub('O2', '', O2_col))] <- NULL
   
-  by.chamber <- split(input, input$Chamber.No)
+  by.chamber <- split(input, input$Probe)
   
   recipient <- lapply(names(by.chamber), function(the.chamber, info.data) {
 

@@ -33,7 +33,7 @@
 #'
 #' @export
 input.info <- function(ID,
-                 Chamber.No,
+                 Probe,
                  Mass,
                  Volume,
                  First.meas){
@@ -42,13 +42,13 @@ input.info <- function(ID,
   if (missing(ID)) 
     ID <- 1:length(Mass)
   
-  if (missing(Chamber.No))
-    Chamber.No <- paste0('CH', 1:length(Mass))
+  if (missing(Probe))
+    Probe <- paste0('CH', 1:length(Mass))
 
   if (missing(First.meas))
     First.meas <- rep(1, length(Mass))
   
-  info.data <- data.frame(ID, Mass, Chamber.No, Volume, First.meas, stringsAsFactors = FALSE)
+  info.data <- data.frame(ID, Mass, Probe, Volume, First.meas, stringsAsFactors = FALSE)
 
   return(info.data)
 }

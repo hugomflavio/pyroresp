@@ -25,7 +25,7 @@ plot_mr <- function(MR, SMR = NULL, MMR = NULL, cycles, chambers, target_col = '
 		if (is.numeric(chambers))
 			chambers <- paste0('CH', chambers)
 
-		MR <- MR[MR$Chamber.No %in% chambers, ]
+		MR <- MR[MR$Probe %in% chambers, ]
 	}
 
 	p <- ggplot2::ggplot()
@@ -36,7 +36,7 @@ plot_mr <- function(MR, SMR = NULL, MMR = NULL, cycles, chambers, target_col = '
 		SMR$y_column <- SMR[, target_col]
 		
 		if (!missing(chambers)) 
-			SMR <- SMR[SMR$Chamber.No %in% chambers, ]
+			SMR <- SMR[SMR$Probe %in% chambers, ]
 
 		p <- p + ggplot2::geom_hline(data = SMR, ggplot2::aes(yintercept = y_column), col = "red")
 	}
@@ -45,13 +45,13 @@ plot_mr <- function(MR, SMR = NULL, MMR = NULL, cycles, chambers, target_col = '
 		MMR$y_column <- MMR[, target_col]		
 		
 		if (!missing(chambers)) {			
-			MMR <- MMR[MMR$Chamber.No %in% chambers, ]
+			MMR <- MMR[MMR$Probe %in% chambers, ]
 		}
 
 		p <- p + ggplot2::geom_point(data = MMR, ggplot2::aes(x = Date.Time, y = y_column), col = "red", size = 2)
 	}
 	
-	p <- p + ggplot2::facet_wrap(Chamber.No ~ ., ncol = 1)
+	p <- p + ggplot2::facet_wrap(Probe ~ ., ncol = 1)
 	p <- p + ggplot2::labs(y = ylabel, x = '')
 	p <- p + ggplot2::theme_bw()
 	return(p)	
@@ -82,7 +82,7 @@ plot_slopes <- function(input, cycles, chambers, r2 = TRUE) {
 	if (!missing(chambers)) {
 		if (is.numeric(chambers))
 			chambers <- paste0('CH', chambers)
-		input <- input[input$Chamber.No %in% chambers, ]
+		input <- input[input$Probe %in% chambers, ]
 	}
 
 	p <- ggplot2::ggplot(data = input, aes(x = Date.Time))
@@ -120,7 +120,7 @@ plot_slopes <- function(input, cycles, chambers, r2 = TRUE) {
 		p <- p + ggplot2::theme(legend.position = "none") 
 	}
 
-	p <- p + ggplot2::facet_wrap(Chamber.No ~ ., ncol = 1)
+	p <- p + ggplot2::facet_wrap(Probe ~ ., ncol = 1)
 	p <- p + ggplot2::theme_bw()
 }
 
@@ -161,13 +161,13 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 		if (is.numeric(chambers))
 			chambers <- paste0('CH', chambers)
 
-		input <- input[input$Chamber.No %in% chambers, ]
+		input <- input[input$Probe %in% chambers, ]
 	}
 
 	if (any(grepl("F", input$Phase))) {
 		paint_flush <- TRUE
 
-		aux <- split(input, input$Chamber.No)
+		aux <- split(input, input$Probe)
 		
 		recipient <- lapply(names(aux), function(the.chamber) {
 			# instead of using split I need to manually break these
@@ -182,7 +182,7 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 			aux2 <- aux2[grepl("F", names(aux2))]
 			# now extract start and end of phase
 			aux2 <- lapply(aux2, function(the.phase) {
-				data.frame(Chamber.No = the.chamber, xmin = the.phase$Date.Time[1], xmax = the.phase$Date.Time[nrow(the.phase)], ymin = -Inf, ymax = Inf)
+				data.frame(Probe = the.chamber, xmin = the.phase$Date.Time[1], xmax = the.phase$Date.Time[nrow(the.phase)], ymin = -Inf, ymax = Inf)
 			})
 			return(as.data.frame(data.table::rbindlist(aux2)))
 		})
@@ -240,7 +240,7 @@ plot_meas <- function(input, cycles, chambers, temperature = FALSE, oxygen.label
 	p <- p + ggplot2::theme(legend.position = "none") 
 
 	p <- p + ggplot2::labs(y = oxygen.label, x = "Time")
-	p <- p + ggplot2::facet_wrap(Chamber.No ~ ., ncol = 1)
+	p <- p + ggplot2::facet_wrap(Probe ~ ., ncol = 1)
 
 	return(p)
 }
@@ -270,7 +270,7 @@ plot_deltas <- function(input, cycles, chambers, raw_delta_col = 'O2.delta.raw')
 	if (!missing(chambers)) {
 		if (is.numeric(chambers))
 			chambers <- paste0('CH', chambers)
-		input <- input[input$Chamber.No %in% chambers, ]
+		input <- input[input$Probe %in% chambers, ]
 	}
 
 	input$plot_this <- input[, raw_delta_col]
@@ -282,7 +282,7 @@ plot_deltas <- function(input, cycles, chambers, raw_delta_col = 'O2.delta.raw')
 	p <- p + ggplot2::scale_colour_manual(values = c("Grey", "royalblue", 'black'))
 	# p <- p + ggplot2::scale_linetype_manual(values = c("dashed", "solid", 'solid'))
 
-	p <- p + facet_wrap(.~Chamber.No)
+	p <- p + facet_wrap(.~Probe)
 	p <- p + labs(x = '', y = expression(Delta~O[2]), title = paste('Correction method used:', attributes(input)$correction_method),
 				  colour = 'Values:', linetype = 'Values:')
 	p
@@ -384,8 +384,8 @@ plot_bg <- function(obs, bg, chambers, O2_col, mean.lwd = 1.5) {
 		if (is.numeric(chambers))
 			chambers <- paste0('CH', chambers)
 
-		obs <- obs[obs$Chamber.No %in% chambers, ]
-		bg <- bg[bg$Chamber.No %in% chambers, ]
+		obs <- obs[obs$Probe %in% chambers, ]
+		bg <- bg[bg$Probe %in% chambers, ]
 	}
 
 	obs$Phase <- as.numeric(sub('M', '', obs$Phase))
@@ -393,7 +393,7 @@ plot_bg <- function(obs, bg, chambers, O2_col, mean.lwd = 1.5) {
 	p <- ggplot(data = obs, aes(x = Phase.Time))
 	p <- p + geom_line(aes_string(y = O2_col, group = "Phase", colour = "Phase"))
 	p <- p + geom_line(data = bg, aes(y = O2.background), col = 'red', lwd = mean.lwd)
-	p <- p + facet_grid(. ~ Chamber.No)
+	p <- p + facet_wrap(. ~ Probe, ncol = 4)
 	p <- p + theme_bw()
 	p <- p + theme(legend.position = 'none')
 	p

@@ -6,7 +6,7 @@
 #' @usage pre
 #' @format A data frame with 4800 rows and 7 variables:
 #' \describe{
-#'   \item{Chamber.No}{the number of a chamber}
+#'   \item{Probe}{the number of a chamber}
 #'   \item{Test}{a constant string "test"}
 #'   \item{Time}{ordinal number of seconds in each measurement phase (1-1200)}
 #'   \item{Init.O2}{initial level of dissolved oxygen (mgO2/L)}

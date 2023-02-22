@@ -258,22 +258,33 @@ load.pyroscience.temp.file <- function(file, date.format, tz = Sys.timezone()) {
 #' 
 #' @export
 #' 
-load_pyro_files <- function(folder, coolterm.legacy = FALSE) {
+load_pyro_files <- function(folder, coolterm.legacy = FALSE, max.gap.fix = 1) {
 	if (!dir.exists(folder))
 		stop('Could not find target folder')
 
-	coolterm_file <- paste0(folder, "/", list.files(folder)[grepl("CoolTerm", list.files(folder))])
+	coolterm_file <- list.files(folder)[grepl("CoolTerm", list.files(folder))]
 	
 	if (length(coolterm_file) == 0)
 		stop('Could not find coolterm file')
+	else
+		coolterm_file <- paste0(folder, "/", coolterm_file)
 
 	output <- list()
 
-	if (coolterm.legacy)
-		output$coolterm <- load.coolterm.file(coolterm_file)
-	else
-		output$coolterm <- load_wide_coolterm_file(coolterm_file)
+	coolterm <- lapply(coolterm_file, function(file) {
+		if (coolterm.legacy)
+			load.coolterm.file(file, max.gap.fix = max.gap.fix)
+		else
+			load_wide_coolterm_file(file, max.gap.fix = max.gap.fix)
+	})
 
+	if(length(coolterm) > 1) {
+		names(coolterm) <- stringr::str_extract(coolterm_file,'[A-Z](?=.txt)')
+	} else {
+		names(coolterm) <- "A"
+	}
+	
+	output$coolterm <- coolterm
 	output$pyro <- compile_run(folder)
 	return(output)
 }
@@ -301,19 +312,20 @@ compile_run <- function(folder) {
 	files <- files[file.link]
 
 	aux <- lapply(files, function(i) {
+		device <- stringr::str_extract(i,'[A-Z](?= Ch.)')
 		ch <- stringr::str_extract(i,'(?<=Ch.)[0-9]')
 
 		if (grepl("Oxygen", i)) {
 			x <- load.pyroscience.o2.file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
 			x <- x[, c('Date.Time', 'Sample.CompT', 'Pressure.CompP', 'Oxygen.Main')]
-			colnames(x)[2:4] <- paste0(c('Temp.', 'Pressure.', 'Ox.'),	ch)
+			colnames(x)[2:4] <- paste0(c('Temp.', 'Pressure.', 'Ox.'),	device, ch)
 		}
 
 	 
 		if (grepl("pH", i)) {
 			x <- load.pyroscience.pH.file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
 			x <- x[, c('Date.Time', 'pH.Main')]
-			colnames(x)[2] <- paste0(c('pH.'),	ch)
+			colnames(x)[2] <- paste0(c('pH.'),	device, ch)
 		}
 
 		return(x)
@@ -509,5 +521,5 @@ remove_phase <- function(input, chamber, phase) {
 	if (missing(chamber))
 		input[!(input$Phase %in% phase), ]
 	else
-		input[!(input$Chamber.No %in% chamber & input$Phase %in% phase), ]
+		input[!(input$Probe %in% chamber & input$Phase %in% phase), ]
 }
