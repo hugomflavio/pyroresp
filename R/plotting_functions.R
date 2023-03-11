@@ -388,14 +388,14 @@ plot_bg <- function(obs, bg, chambers, O2_col, mean.lwd = 1.5) {
 		bg <- bg[bg$Probe %in% chambers, ]
 	}
 
-	obs$Phase <- as.numeric(sub('M', '', obs$Phase))
+	obs$Phase <- sub('M', '', obs$Phase)
 	
 	p <- ggplot(data = obs, aes(x = Phase.Time))
 	p <- p + geom_line(aes_string(y = O2_col, group = "Phase", colour = "Phase"))
 	p <- p + geom_line(data = bg, aes(y = O2.background), col = 'red', lwd = mean.lwd)
 	p <- p + facet_wrap(. ~ Probe, ncol = 4)
 	p <- p + theme_bw()
-	p <- p + theme(legend.position = 'none')
+	# p <- p + theme(legend.position = 'none')
 	p
 }
 
