@@ -171,7 +171,7 @@ calculate_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
   cycles <- max(meas.data$Cycle)
 
   my_bg <- lapply(unique(meas.data$Probe), function(chamber) {
-
+    # cat(chamber, "\n")
     pre_line <- pre.bg$O2.background[pre.bg$Probe == chamber]
 
     post_line <- post.bg$O2.background[post.bg$Probe == chamber]
@@ -182,10 +182,14 @@ calculate_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
       if (length(pre_line) < length(post_line))
         post_line <- post_line[1:length(pre_line)]
       else
-        pre_line <- post_line[1:length(post_line)]
+        pre_line <- pre_line[1:length(post_line)]
     }
 
     difference <- post_line - pre_line
+
+    if (all(difference == 0)) {
+      stop("The pre-bg and post-bg are exactly the same! Cannot calculate linear progression.", call. = FALSE)
+    }
 
     increments <- difference / (cycles - 1)
 
