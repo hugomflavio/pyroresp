@@ -272,10 +272,13 @@ load_pyro_files <- function(folder, coolterm.legacy = FALSE, max.gap.fix = 1) {
 	output <- list()
 
 	coolterm <- lapply(coolterm_file, function(file) {
-		if (coolterm.legacy)
-			load.coolterm.file(file, max.gap.fix = max.gap.fix)
-		else
-			load_wide_coolterm_file(file, max.gap.fix = max.gap.fix)
+		if (coolterm.legacy) {
+			recipient <- load.coolterm.file(file, max.gap.fix = max.gap.fix)
+			output <- list(recipient, recipient, recipient, recipient)
+		} else {
+			output <- load_wide_coolterm_file(file, max.gap.fix = max.gap.fix)
+		}
+		return(output)
 	})
 
 	if(length(coolterm) > 1) {
