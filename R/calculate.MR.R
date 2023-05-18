@@ -216,7 +216,7 @@ override_bg <- function(bg, replace, with) {
     if (sum(bg$Probe == i) > sum(bg$Probe == with))
       stop("the cycle for the replacement chamber is shorted than the cycle for the chamber to be replaced.")
 
-    bg$O2.background[bg$Probe == i] <- bg$O2.background[bg$Probe == with][1:sum(bg$Chamber.No == i)]
+    bg$O2.background[bg$Probe == i] <- bg$O2.background[bg$Probe == with][1:sum(bg$Probe == i)]
     # the additional subset at the end ensures 
   }
 
