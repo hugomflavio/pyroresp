@@ -7,19 +7,10 @@
   if(interactive()){
     pkg.version = packageDescription("FishResp", fields = "Version")
     startup.txt = paste("
-    NOTE: THIS IS A FORKED VERSION OF THE FishResp PACKAGE!
-    
-    ==========================              o         #########      #
-    FishResp", pkg.version, "is loaded         o        ##########       ##
-    ==========================            o     ###  #########   ###
-                                            o  ####################
-    For a description of its performance         #############    ##
-    & to cite FishResp please refer to:              # #           #
-
-    Morozov, S., McCairns, R.J.S., Merila, J. (2019) FishResp: R package
-    and GUI application for analysis of aquatic respirometry data.
-    Conserv Physiol 7(1): coz003; https://doi.org/10.1093/conphys/coz003\n
-    ======================================================================\n")
+THIS IS A FORKED VERSION OF THE FishResp PACKAGE!\n
+Do not use this repository if you are looking for the real FishResp!\n
+Go here instead: https://github.com/embedded-sergey/FishResp-Rpackage\n
+")
     packageStartupMessage(startup.txt)
   }
 }

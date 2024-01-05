@@ -1,6 +1,10 @@
 #' FishResp: Analytical Tool for Aquatic Respirometry
 #'
-#' Calculates metabolic rate of fish and other aquatic organisms measured using an intermittent-flow respirometry approach. The tool is used to run a set of graphical QC tests of raw respirometry data, correct it for background respiration and chamber effect, filter and extract target values of absolute and mass-specific metabolic rate. Experimental design should include background respiration tests and measuring of one or more metabolic rate traits. The R package is ideally integrated with the pump controller 'PumpResp' and the DO meter 'SensResp' (open-source hardware by FishResp). Raw respirometry data can be also imported from 'AquaResp' (free software), 'AutoResp', ('LoligoSystems'), 'OxyView' ('PreSens'), 'Pyro Oxygen Logger' ('PyroScience'), and 'Q-box Aqua' ('QubitSystems').
+#' THIS IS A FORKED VERSION OF THE FishResp PACKAGE!
+#' 
+#' Do not use this repository if you are looking for the real FishResp!
+#' 
+#' Go here instead: https://github.com/embedded-sergey/FishResp-Rpackage
 #'
 #' @docType package
 #' @name FishResp

@@ -9,7 +9,7 @@ merge_pyroscience_coolterm(pyroscience, coolterm)
 \arguments{
 \item{pyroscience}{The dataframe containing the O2 measurements and imported using \code{\link{load.pyroscience.logger.file}} or \code{\link{load.pyroscience.workbench.file}}.}
 
-\item{coolterm}{The dataframe containing the phase information, as imported by the function \code{\link{load.coolterm.file}}}
+\item{coolterm}{The dataframe containing the phase information, as imported by the function \code{\link{load_wide_coolterm_file}}}
 }
 \value{
 a data.frame similar to the pyroscience input, but where the Phase column has been updated

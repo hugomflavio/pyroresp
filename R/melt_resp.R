@@ -31,9 +31,14 @@ melt_resp <- function(input, info.data, O2.unit) {
       trimmed.db <- by.chamber[[the.chamber]]
 
       first.meas <- info.data$First.meas[info.data$Probe == the.chamber]
-      trimmed.db <- trimmed.db[trimmed.db$Cycle >= first.meas, ]
-  
-      return(trimmed.db)
+      if (!is.na(first.meas)) {
+        trimmed.db <- trimmed.db[trimmed.db$Cycle >= first.meas, ]
+      } else {
+        trimmed.db <- NULL
+      }
+      
+      return(trimmed.db) 
+
     }, info.data = info.data)
 
     output <- as.data.frame(data.table::rbindlist(recipient))

@@ -9,7 +9,8 @@ plot_meas(
   cycles,
   chambers,
   temperature = FALSE,
-  oxygen.label = "Oxygen"
+  oxygen.col = "O2.hPa",
+  oxygen.label = "Oxygen (hPa)"
 )
 }
 \arguments{
