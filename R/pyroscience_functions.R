@@ -272,14 +272,10 @@ load_pyro_files <- function(folder, legacy.coolterm = FALSE, legacy.device.name 
 	output <- list()
 
 	coolterm <- lapply(coolterm_file, function(file) {
-
-		if (coolterm.legacy) {
-			recipient <- load.coolterm.file(file, max.gap.fix = max.gap.fix)
-			output <- list(recipient, recipient, recipient, recipient)
-		} else {
-			output <- load_wide_coolterm_file(file, max.gap.fix = max.gap.fix)
-		}
-		return(output)
+		if (legacy.coolterm)
+			load_legacy_coolterm_file(file, max.gap.fix = max.gap.fix)
+		else
+			load_wide_coolterm_file(file, max.gap.fix = max.gap.fix)
 	})
 
 	if (legacy.device.name) {
