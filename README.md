@@ -1,5 +1,6 @@
-THIS IS A FORKED VERSION OF THE FishResp PACKAGE!
+# Welcome
 
-Do not use this repository if you are looking for the real FishResp!
+pyroresp is still in embryonic stage. This package was originally forked from the FishResp R package (https://github.com/embedded-sergey/FishResp-Rpackage) and has since grown to become a sibling of FishResp.
 
-Go here instead: https://github.com/embedded-sergey/FishResp-Rpackage
+pyroresp focuses on using pyroscience output to run intermittent-flow respirometry analyses.
+

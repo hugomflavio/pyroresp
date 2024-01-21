@@ -2,14 +2,14 @@
 #'
 #' The function is used to calculate and plot background respiration, absolute and mass-specific metabolic rates.
 #'
-#' @param slope.data  a data frame obtained by using the function \code{\link{extract.slope}}
+#' @param slope.data  a data frame obtained by using the function \code{\link{extract_slope}}
 #' @param density  numeric: the density of an animal body (\eqn{kg/m^{3}})
 #'
 #' @return The function returns a data frame with calculated background respiration, absolute and mass-specific metabolic rates.
 #'
 #' @export
 
-calculate.MR  <- function(slope.data, density = 1000){
+calc_mr  <- function(slope.data, density = 1000){
 
   BW = slope.data$Mass/1000 # convert Mass from 'g' to 'kg'
   V = slope.data$Volume/1000 - (BW/(density/1000)) #convert Volume from 'mL' to 'L' and Density from 'kg/M^3' to 'kg/L'
@@ -136,7 +136,7 @@ exclude_rolling_mmr_segment <- function(rolling_mmr, probe, start, end) {
 #' 
 #' @export
 #' 
-calculate.bg <- function(input, O2_col, method = c('mean', 'first', 'last'), force.linear = TRUE, smoothing = 30){
+calc_bg <- function(input, O2_col, method = c('mean', 'first', 'last'), force.linear = TRUE, smoothing = 30){
 
   method <- match.arg(method)
 
@@ -274,7 +274,7 @@ calc_delta <- function(input, O2_col) {
 #' 
 #' @export
 #' 
-clean.meas <- function(input, wait = 0, auto.cut.last = FALSE){
+clean_meas <- function(input, wait = 0, auto.cut.last = FALSE){
 
   input$Date <- as.Date(input$Date.Time)
   input$Real.Time <- chron::times(strftime(input$Date.Time, "%H:%M:%S"))
@@ -352,8 +352,8 @@ clean.meas <- function(input, wait = 0, auto.cut.last = FALSE){
 #'
 #' The function is used to correct metabolic rate measurements for background respiration. To this end, oxygen consumption is estimated as the slope of the linear regression of measured \eqn{O_{2}} concentration over time, and is extracted for background respiration test and for each measurement phase. The correction is based on subtraction of oxygen consumption obtained during background respiration test from oxygen consumption obtained during metabolic rate measurements.
 #'
-#' @param pre.bg  a data frame obtained by using the function \code{\link{calculate.bg}} for a blank test before actual metabolic rate measurements
-#' @param post.bg  a data frame obtained by using the function \code{\link{calculate.bg}} for a blank test after actual metabolic rate measurements
+#' @param pre.bg  a data frame obtained by using the function \code{\link{calc_bg}} for a blank test before actual metabolic rate measurements
+#' @param post.bg  a data frame obtained by using the function \code{\link{calc_bg}} for a blank test after actual metabolic rate measurements
 #' @param meas.data  a data frame obtained by using the function \code{\link{process_pyro_files}} for actual metabolic rate measurements
 #' @param method  string: the name of the method used for background respiration correction:
 #' @param O2_col the name of the column containing the raw O2 values
@@ -373,7 +373,7 @@ clean.meas <- function(input, wait = 0, auto.cut.last = FALSE){
 #' @return  The function returns a data frame containing data of metabolic rate measurements corrected for background respiration.
 #'
 #'
-#' AMR.clean <- correct.meas(post.data = post,
+#' AMR.clean <- correct_meas(post.data = post,
 #'                           meas.data = AMR.raw,
 #'                           method = "post.test")
 #'
@@ -381,7 +381,7 @@ clean.meas <- function(input, wait = 0, auto.cut.last = FALSE){
 #'
 #' @export
 #'
-correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw', O2_delta_col = "O2.delta.raw",
+correct_meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw', O2_delta_col = "O2.delta.raw",
                         method = c("pre.test", "post.test", "average",
                                    "linear", "exponential", "parallel", "none"),
                         empty.chamber){
@@ -411,7 +411,7 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw', O2_delt
 }
 
   if (method == "linear") {
-    my_bg <- calculate_linear_bg_progression(pre.bg = pre.bg, post.bg = post.bg, meas.data = meas.data)
+    my_bg <- calc_linear_bg_progression(pre.bg = pre.bg, post.bg = post.bg, meas.data = meas.data)
 
     meas.data$temporary_index <- paste(meas.data$Cycle, meas.data$Probe, meas.data$Phase.Time)
 
@@ -473,7 +473,7 @@ correct.meas <- function (pre.bg, post.bg, meas.data, O2_col = 'O2.raw', O2_delt
 #' 
 #' @keywords internal
 #' 
-calculate_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
+calc_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
   cycles <- max(meas.data$Cycle)
 
   my_bg <- lapply(unique(meas.data$Probe), function(chamber) {
@@ -527,7 +527,7 @@ calculate_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
 
 
 
-# calculate_plateau_bg_progression <- function(pre.bg, post.bg, meas.data) {
+# calc_plateau_bg_progression <- function(pre.bg, post.bg, meas.data) {
 #   cycles <- max(meas.data$Cycle)
 
 #   my_bg <- lapply(unique(meas.data$Probe), function(chamber) {
@@ -578,17 +578,3 @@ calculate_linear_bg_progression <- function(pre.bg, post.bg, meas.data) {
 #   return(my_bg_df)
 # }
 
-
-# i = 100
-
-# L = post_line[i] # maximum value
-# k = 0.1 # growth rate/steepness
-# x = 0:100 # the x values
-# x0 = 0 # sigmoid midpoint
-
-# y = L/(1+exp(-k*(x-x0)))
-# plot(y)
-
-
-
-# loadf("convertLink")

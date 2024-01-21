@@ -1,84 +1,3 @@
-#' Load a respirometry data file originating from pyroscience's 'Pyro Oxygen Logger' software.
-#' 
-#' @param file The name of a file which contains raw data obtained from the 'Pyro Oxygen Logger' software (\href{https://www.pyro-science.com}{PyroScience}) 
-#' @param n.chamber	integer: the number of chambers used in an experiment (including empty ones)
-#' @param date.format	string: date format used in raw data obtained from the 'Pyro Oxygen Logger' software (e.g. "\%Y-\%m-\%d")
-#' 
-#' @return A dataframe containing the recorded oxygen data
-#' 
-#' @export
-#' 
-load.pyroscience.logger.file <- function(file, n.chamber = 1:4, date.format) {
-	# NOTE: The number of chambers could likely be obtained from the file contents.
-	#			 Would need an example to verify.
-	n.chamber <- match.arg(n.chamber)
-
-	if (length(file) == 0 || !file.exists(file))
-		stop("Could not find target file.", call. = FALSE)
-
-	column.vector <- c(1, 2, 9, 5, 10, 6, 11, 7, 12, 8)[1:(2 + 2 * n.chamber)]
-	column.names <- c("Date", "Time", "Temp.1", "Ox.1", "Temp.2", "Ox.2", "Temp.3", "Ox.3", "Temp.4", "Ox.4")[1:(2 + 2 * n.chamber)]
-
-	pyro <- utils::read.table(file, sep = "\t", skip = 12 + (2 * n.chamber), header = FALSE, strip.white = TRUE)
-	pyro <- pyro[, column.vector]
-	names(pyro) <- column.names
-	pyro$Date.Time <- paste(pyro$Date, pyro$Time)
-	pyro$Phase <- "F"
-	pyro[pyro == "---"] <- NA
-	
-	pyro <- pyro[, c(ncol(pyro) - 1, ncol(pyro), 3:(ncol(pyro)-2))]
-	
-	pyro$Date.Time <- as.POSIXct(pyro$Date.Time, format = paste(date.format, "%H:%M:%S"))
-	return(pyro)
-}
-
-#' Load a respirometry data file originating from pyroscience's 'PyroScience Workbench' software.
-#' 
-#' @param file The name of a file which contains raw data obtained from the 'PyroScience Workbench' software (\href{https://www.pyro-science.com}{PyroScience}) 
-#' @param date.format	A string indicating date format used in raw data obtained from the 'Pyro Oxygen Logger' software (e.g. "\%Y-\%m-\%d")
-#' 
-#' @return A dataframe containing the recorded oxygen data
-#' 
-#' @export
-#' 
-load.pyroscience.workbench.file <- function(file, date.format) {
-	if (!file.exists(file))
-		stop("Could not find target file.", call. = FALSE)
-
-	aux <- readLines(file, n = 100)
-	preamble <- suppressWarnings(max(grep("^#", aux)))
-	
-	aux <- suppressWarnings(aux[grepl("Ch.[1-4]\\] - Oxygen Sensor", aux)])
-	n.chambers <- length(sub("\\D*(\\d+).*", "\\1", aux))
-
-	rm(aux)
-
-	column.vector <- c(1, 2, 12, 17, 4, 30, 35, 22, 48, 53, 40, 66, 71, 58)[1:(2 + 3 * n.chambers)]
-	column.names <- c("Date", "Time", "Temp.1", "Pressure.1", "Ox.1", "Temp.2", "Pressure.2", "Ox.2", "Temp.3", "Pressure.3", "Ox.3", "Temp.4", "Pressure.4", "Ox.4")[1:(2 + 3 * n.chambers)]
-
-	pyro <- as.data.frame(data.table::fread(file, sep = "\t", skip = preamble, strip.white = TRUE, tz = ""))
-
-	pyro <- pyro[, column.vector]
-	names(pyro) <- column.names
-
-	pyro$Date.Time <- paste(pyro$Date, pyro$Time)
-	pyro$Phase <- NA
-	pyro[pyro == "---"] <- NA
-	
-	pyro <- pyro[, c(ncol(pyro) - 1, ncol(pyro), 3:(ncol(pyro)-2))]
-	
-	pyro$Date.Time <- as.POSIXct(pyro$Date.Time, format = paste(date.format, "%H:%M:%S"), tz = Sys.timezone())
-
-	# failsafe in case the file comes with a trailing NA line
-	if (all(is.na(pyro[nrow(pyro), ])))
-		pyro <- pyro[-nrow(pyro), ]
-
-	if (any(is.na(pyro[,-1:-2])))
-		warning('NA values found in the data!', immediate. = TRUE, call. = FALSE)
-
-	return(pyro)
-}
-
 #' Dummy documentation
 #' 
 #' @export
@@ -163,8 +82,6 @@ check.pyrocience.data <- function(x) {
 }
 
 
-
-
 #' Load a single channel file
 #' 
 #' @param file the input file
@@ -173,7 +90,7 @@ check.pyrocience.data <- function(x) {
 #' 
 #' @export
 #' 
-load.pyroscience.o2.file <- function(file, date.format, skip = 0, tz = Sys.timezone()) {
+load_pyro_o2_file <- function(file, date.format, skip = 0, tz = Sys.timezone()) {
 	if (length(file) == 0 || !file.exists(file))
 		stop("Could not find target file.", call. = FALSE)
 
@@ -202,7 +119,7 @@ load.pyroscience.o2.file <- function(file, date.format, skip = 0, tz = Sys.timez
 #' 
 #' @export
 #' 
-load.pyroscience.pH.file <- function(file, date.format, skip = 0, tz = Sys.timezone()) {
+load_pyro_pH_file <- function(file, date.format, skip = 0, tz = Sys.timezone()) {
 	if (length(file) == 0 || !file.exists(file))
 		stop("Could not find target file.", call. = FALSE)
 
@@ -234,7 +151,7 @@ load.pyroscience.pH.file <- function(file, date.format, skip = 0, tz = Sys.timez
 #' 
 #' @export
 #' 
-load.pyroscience.temp.file <- function(file, date.format, skip = 0, tz = Sys.timezone()) {
+load_pyro_temp_file <- function(file, date.format, skip = 0, tz = Sys.timezone()) {
 	if (length(file) == 0 || !file.exists(file))
 		stop("Could not find target file.", call. = FALSE)
 
@@ -254,42 +171,42 @@ load.pyroscience.temp.file <- function(file, date.format, skip = 0, tz = Sys.tim
 
 #' dummy documentation
 #' 
-#' scan a target folder for a coolterm file and a pyroscience experiment file. import them.
+#' scan a target folder for a phases file and a pyroscience experiment file. import them.
 #' 
 #' @export
 #' 
-load_pyro_files <- function(folder, legacy.coolterm = FALSE, legacy.device.name = TRUE, max.gap.fix = 1) {
+load_pyro_files <- function(folder, legacy.phases = FALSE, legacy.device.name = TRUE, max.gap.fix = 1) {
 	if (length(folder) == 0 || length(folder) > 1 || !dir.exists(folder))
 		stop('Could not find target folder')
 
-	coolterm_file <- list.files(folder)[grepl("CoolTerm", list.files(folder))]
+	phases_file <- list.files(folder)[grepl("CoolTerm", list.files(folder))]
 	
-	if (length(coolterm_file) == 0)
-		stop('Could not find coolterm file')
+	if (length(phases_file) == 0)
+		stop('Could not find phases file')
 	else
-		coolterm_file <- paste0(folder, "/", coolterm_file)
+		phases_file <- paste0(folder, "/", phases_file)
 
 	output <- list()
 
-	coolterm <- lapply(coolterm_file, function(file) {
-		if (legacy.coolterm)
-			load_legacy_coolterm_file(file, max.gap.fix = max.gap.fix)
+	phases <- lapply(phases_file, function(file) {
+		if (legacy.phases)
+			load_legacy_phases_file(file, max.gap.fix = max.gap.fix)
 		else
-			load_wide_coolterm_file(file, max.gap.fix = max.gap.fix)
+			load_phases_file(file, max.gap.fix = max.gap.fix)
 	})
 
 	if (legacy.device.name) {
-		if(length(coolterm) > 1) {
-			names(coolterm) <- stringr::str_extract(coolterm_file,'[A-Z](?=.txt)')
+		if(length(phases) > 1) {
+			names(phases) <- stringr::str_extract(phases_file,'[A-Z](?=.txt)')
 		} else {
-			names(coolterm) <- "A"
+			names(phases) <- "A"
 		}
 	} else {
-		names(coolterm) <- stringr::str_extract(coolterm_file,'(?<=_)[^_]*(?=.txt)')
+		names(phases) <- stringr::str_extract(phases_file,'(?<=_)[^_]*(?=.txt)')
 	}
 	
-	output$coolterm <- coolterm
-	output$pyro <- compile_run(folder, legacy.device.name = legacy.device.name)
+	output$phases <- phases
+	output$pyro <- compile_pyro_data(folder, legacy.device.name = legacy.device.name)
 	return(output)
 }
 
@@ -304,7 +221,7 @@ load_pyro_files <- function(folder, legacy.coolterm = FALSE, legacy.device.name 
 #' 
 #' @export
 #' 
-compile_run <- function(folder, legacy.device.name = TRUE) {
+compile_pyro_data <- function(folder, legacy.device.name = TRUE) {
 	files <- list.files(paste0(folder, '/ChannelData/'))
 
 	file.link <- grepl("Oxygen|pH", files)
@@ -326,7 +243,7 @@ compile_run <- function(folder, legacy.device.name = TRUE) {
 		ch <- stringr::str_extract(i,'(?<=Ch.)[0-9]')
 
 		if (grepl("Oxygen", i)) {
-			x <- load.pyroscience.o2.file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
+			x <- load_pyro_o2_file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
 			x <- x[, c('Date.Time', 'Sample.CompT', 'Pressure.CompP', 'Oxygen.Main')]
 			colnames(x)[2:4] <- paste0(c('Temp.', 'Pressure.', 'Ox.'),	device, ch)
 			file.type <- "Oxygen"
@@ -334,7 +251,7 @@ compile_run <- function(folder, legacy.device.name = TRUE) {
 
 	 
 		if (grepl("pH", i)) {
-			x <- load.pyroscience.pH.file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
+			x <- load_pyro_pH_file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
 			x <- x[, c('Date.Time', 'pH.Main')]
 			colnames(x)[2] <- paste0(c('pH.'),	device, ch)
 			file.type <- "pH"
@@ -370,70 +287,9 @@ compile_run <- function(folder, legacy.device.name = TRUE) {
 }
 
 
-
-update_run <- function(input) {
-
-	new_sourcedata <- lapply(input$sourcedata, function(i) {
-		device <- attributes(i)$device
-		ch <- attributes(i)$ch
-
-		if (attributes(i)$filetype == "Oxygen") {
-			x <- load.pyroscience.o2.file(attributes(i)$sourcefile, date.format = '%d-%m-%Y', skip = nrow(i))
-			x <- x[, c('Date.Time', 'Sample.CompT', 'Pressure.CompP', 'Oxygen.Main')]
-			colnames(x)[2:4] <- paste0(c('Temp.', 'Pressure.', 'Ox.'),	device, ch)
-			# x <- rbind(i, x)
-		}
-
-		if (attributes(i)$filetype == "pH") {
-			x <- load.pyroscience.pH.file(attributes(i)$sourcefile, date.format = '%d-%m-%Y', skip = nrow(i))
-			x <- x[, c('Date.Time', 'pH.Main')]
-			colnames(x)[2] <- paste0(c('pH.'),	device, ch)
-			# x <- rbind(i, x)
-		}
-
-		attributes(x)$sourcefile <- attributes(i)$sourcefile
-		attributes(x)$device <- device
-		attributes(x)$ch <- ch
-		attributes(x)$filetype <- attributes(i)$filetype
-		return(x)
-	})
-
-	sourcedata <- lapply(1:length(new_sourcedata), function(i) {
-		output <- rbind(input$sourcedata[[i]], new_sourcedata[[i]])
-		attributes(output)$sourcefile <- attributes(input$sourcedata[[i]])$sourcefile
-		attributes(output)$device <- attributes(input$sourcedata[[i]])$device
-		attributes(output)$ch <- attributes(input$sourcedata[[i]])$ch
-		attributes(output)$filetype <- attributes(input$sourcedata[[i]])$filetype
-		return(output)
-	})
-
-
-	very.start <- min(as.POSIXct(sapply(new_sourcedata, function(i) {
-		as.character(min(i$Date.Time))
-	})))
-
-	very.end <- max(as.POSIXct(sapply(new_sourcedata, function(i) {
-		as.character(max(i$Date.Time))
-	})))
-
-	recipient <- data.frame(Date.Time = seq(from = very.start, to = very.end, by = 1),
-													Phase = NA_character_)
-
-	for (i in new_sourcedata) {
-		recipient <- merge(recipient, i[!duplicated(i$Date.Time), ], by = 'Date.Time', all = TRUE)
-	}
-
-	recipient <- rbind(input$compileddata, recipient)
-	attributes(recipient)$latestbatchstart <- nrow(input$compileddata)+1
-
-	output <- list(sourcedata = sourcedata, compileddata = recipient)
-	return(output)
-}
-
-
 #' dummy documentation
 #' 
-#' perform standard processing operations to the pyro/coolterm files
+#' perform standard processing operations to the pyro/phases files
 #' 
 #' @export
 #' 
@@ -451,8 +307,8 @@ process_pyro_files <- function(input, wait, chamber.info, O2_unit, min_temp, max
 		input$chamber.info <- chamber.info
 	}
 
-  	message("Merging pyroscience and coolterm file")
-	input$phased <- merge_pyroscience_wide_coolterm(input)
+  	message("Merging pyroscience and phases file")
+	input$phased <- merge_pyroscience_phases(input)
   	if (patch_NAs) {
   		message("Patching NA's in the data")
 		input$phased <- patch.NAs(input$phased, method = 'linear', verbose = FALSE)
@@ -460,7 +316,7 @@ process_pyro_files <- function(input, wait, chamber.info, O2_unit, min_temp, max
 	message("Melting resp data into computer-friendly format")
   	input$meas_raw <- melt_resp(input = input$phased, info.data = chamber.info, O2.unit = O2_unit)
 	message("Removing flush and wait values")
-  	input$meas <- clean.meas(input = input$meas_raw, wait = wait)
+  	input$meas <- clean_meas(input = input$meas_raw, wait = wait)
 
 	message("Converting O2 units and measuring delta")
 	input$meas_raw$O2.umol.l <- respirometry::conv_o2(input$meas_raw[, paste0("O2.", O2_unit)], from = O2_unit, to = 'umol_per_l', temp = input$meas_raw$Temp, sal = 0, atm_pres = input$meas_raw$Pressure)
@@ -525,19 +381,19 @@ process_pyro_files <- function(input, wait, chamber.info, O2_unit, min_temp, max
 #' @export
 #' 
 process_pyro_mr <- function(input, r2, O2_raw, smr.method = "calcSMR.low10pc", max.length = 99999) {
-	input$all.slopes <- calc.slope(input$corrected, O2_raw = O2_raw, max.length = max.length)
+	input$all.slopes <- calc_slope(input$corrected, O2_raw = O2_raw, max.length = max.length)
 
-	input$good.slopes <- extract.slope(input$all.slopes, r2 = r2)
+	input$good.slopes <- extract_slope(input$all.slopes, r2 = r2)
 	
-	aux <- extract.slope(input$good.slopes, method = smr.method, r2 = r2)
+	aux <- extract_slope(input$good.slopes, method = smr.method, r2 = r2)
 	input$smr.slope <- merge(input$chamber.info, aux[, !(colnames(aux) %in% c("ID", "Mass", "Volume"))], by = "Probe", all = TRUE)
 	
-	aux <- extract.slope(input$good.slopes, method = "max", r2 = r2, n.slope = 1)
+	aux <- extract_slope(input$good.slopes, method = "max", r2 = r2, n.slope = 1)
 	input$mmr.slope <- merge(input$chamber.info, aux[, !(colnames(aux) %in% c("ID", "Mass", "Volume"))], by = "Probe", all = TRUE)
 	
-	input$mr <- calculate.MR(input$good.slopes)
-	input$smr <- calculate.MR(input$smr.slope)
-	input$mmr <- calculate.MR(input$mmr.slope)
+	input$mr <- calc_mr(input$good.slopes)
+	input$smr <- calc_mr(input$smr.slope)
+	input$mmr <- calc_mr(input$mmr.slope)
 
 	# convert O2/Kg to O2/g
 	input$smr$MR.mass.umol.g <- input$smr$MR.mass/1000

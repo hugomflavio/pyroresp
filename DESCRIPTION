@@ -1,22 +1,9 @@
-Package: FishResp
-Version: 1.1.0-9002
-Title: Analytical Tool for Aquatic Respirometry
-Description: Designed to analyse respirometry data. This is a forked and altered version of the FishResp package.
-    Do not use this repository if you are looking for the real FishResp package, which you can find here here <https://github.com/embedded-sergey/FishResp-Rpackage>.
-URL: https://fishresp.org
-Authors@R: c(
-    person("Sergey", "Morozov", role = c("aut", "cre"), email = "sergey.morozov@helsinki.fi"),
-    person("Scott", "McCairns", role = c("aut", "ths")),
-    person("Juha", "Merila", role = "ths"),
-    person("Federico", "Calboli", role = "ctb"),
-    person("Jenni", "Prokkola", role = "dtc"),
-    person("Stephen", "White", role = "dtc"),
-    person("Daniel", "Montgomery", role = "dtc"),
-    person("Laura", "Almodovar-Acevedo", role = "dtc"),
-    person("Niclas", "Kolm", role = "dtc"),
-    person("Alexander", "Kotrschal", role = "dtc"),
-    person("Erik", "Gill", role = "dtc"))
-Maintainer: Sergey Morozov <sergey.morozov@helsinki.fi>
+Package: pyroresp
+Version: 0.0.1
+Title: Analyse respirometry data captured by firesting loggers
+Authors@R: person("Hugo", "Flávio", role = c("aut", "cre"), email = "hflavio@wlu.ca", comment = c(ORCID = "0000-0002-5174-1197"))
+Description: Designed to analyse intermittent-flow respirometry data. This is a sibling package of the FishResp R package.
+URL: https://github.com/hugomflavio/pyroresp
 License: GPL-3
 Depends: R (>= 4.0.0)
 Imports: 

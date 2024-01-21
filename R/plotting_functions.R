@@ -483,7 +483,7 @@ plot_o2 <- function(folder) {
 	O2.files <- files[O2.file.link]
 
 	aux <- lapply(O2.files, function(i) {
-		x <- load.pyroscience.o2.file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
+		x <- load_pyro_o2_file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
 		x[, c('Date.Time', 'Oxygen.Main', 'Sample.CompT')]
 	})
 	names(aux) <- stringr::str_extract(O2.files,'Ch.[0-9]')

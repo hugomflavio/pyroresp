@@ -2,7 +2,7 @@
 #' 
 #' @export
 #' 
-calc.slope <- function(input, O2_raw = 'O2.raw', max.length = Inf) {
+calc_slope <- function(input, O2_raw = 'O2.raw', max.length = Inf) {
   # The operation is done by phase and by chamber, so the dataset is broken twice below
   by.chamber <- split(input, input$Probe) # first by chamber
 
@@ -63,7 +63,7 @@ calc.slope <- function(input, O2_raw = 'O2.raw', max.length = Inf) {
 #'
 #' The function extracts the slopes of the linear regression of corrected \eqn{O_{2}} concentration over time with defined parameters (see Arguments).
 #'
-#' @param slopes  a data frame obtained by using the function \code{\link{calc.slope}}
+#' @param slopes  a data frame obtained by using the function \code{\link{calc_slope}}
 #' @param method  string: the method of extracting slopes:
 #'  \itemize{
 #'   \item 'all' all slopes
@@ -101,7 +101,7 @@ calc.slope <- function(input, O2_raw = 'O2.raw', max.length = Inf) {
 #'
 #' @export
 #'
-extract.slope <- function(slopes, method = c("all", "min", "max", "lower.tail", "upper.tail",
+extract_slope <- function(slopes, method = c("all", "min", "max", "lower.tail", "upper.tail",
                                              "calcSMR.mlnd", "calcSMR.quant", "calcSMR.low10", "calcSMR.low10pc"),
                           r2 = 0.95, n.slope = 1000, percent = 10, p = 0.25, G = 1:4){
 
