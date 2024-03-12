@@ -7,10 +7,3 @@
   #   packageStartupMessage(paste0("-------------------------------------------------------------\n!!! A NEW VERSION of pyroresp is available! (v.", inst.ver, " -> v.", new.ver[, "ReposVer"], ")\n!!! You should update pyroresp before continuing.\n!!! You can update your packages by running update.packages()\n-------------------------------------------------------------\n"))
   # } # nocov end
 }
-
-if (FALSE) {
-  knitr::knit()
-  rmarkdown::render()
-}
-# These dummy lines suppress the R check note regarding unused dependencies.
-# knitr and rmarkdown are needed to compile the vignettes.

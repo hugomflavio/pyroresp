@@ -49,7 +49,12 @@ jobs:
         with:
           cache-version: 1
           dependencies: '"hard"'
-          extra-packages: any::covr, any::testthat, any::rcmdcheck
+          extra-packages: >
+            any::rcmdcheck,
+            any::knitr, 
+            any::rmarkdown, 
+            any::covr, 
+            any::testthat,
           needs: check
 
       - name: Install system dependencies on macOS

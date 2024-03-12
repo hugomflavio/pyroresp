@@ -19,12 +19,13 @@ Imports:
     chron, 
     data.table,
     ggplot2,
-    knitr,
     mclust, 
     patchwork,
     reshape2,
     respirometry,
-    rmarkdown,
     stats,
     stringr,
     utils
+Suggests:
+    knitr,
+    rmarkdown
