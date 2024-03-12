@@ -1,6 +1,6 @@
 <!-- Jump to [**installation instructions**](#installing-actel) -->
 
-# pyroresp<img src="vignettes/pyroresp_logo.png" align="right" width="120" />
+# pyroresp<img src="vignettes/pyroresp_logo_120.png" align="right" width="120" />
 
 [![R-CMD-check](https://github.com/hugomflavio/pyroresp/actions/workflows/R-CMD-check.yml/badge.svg)](https://github.com/hugomflavio/pyroresp/actions)
 <!-- [![CRAN\_Status\_Badge](https://www.r-pkg.org/badges/version/pyroresp)](https://cran.r-project.org/package=pyroresp) -->
