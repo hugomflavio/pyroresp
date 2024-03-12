@@ -2,4 +2,8 @@
 #'
 #' @docType package
 #' @name pyroresp
+#' @import units
+#' @import stats
+#' @import utils
+#' 
 "_PACKAGE"

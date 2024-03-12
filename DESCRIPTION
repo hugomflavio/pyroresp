@@ -1,20 +1,30 @@
 Package: pyroresp
-Version: 0.0.1
+Version: 0.0.2
 Title: Analyse respirometry data captured by firesting loggers
 Authors@R: person("Hugo", "Flávio", role = c("aut", "cre"), email = "hflavio@wlu.ca", comment = c(ORCID = "0000-0002-5174-1197"))
 Description: Designed to analyse intermittent-flow respirometry data. This is a sibling package of the FishResp R package.
 URL: https://github.com/hugomflavio/pyroresp
+BugReports: https://github.com/hugomflavio/pyroresp/issues
 License: GPL-3
-Depends: R (>= 4.0.0)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Language: en-GB
+NeedsCompilation: no
+VignetteBuilder: knitr,
+                 rmarkdown
+Depends: R (>= 4.0.0),
+         units,
 Imports: 
     chron, 
-    mclust, 
-    respirometry,
     data.table,
     ggplot2,
+    mclust, 
     patchwork,
     reshape2,
-    stringr
-RoxygenNote: 7.2.3
-Encoding: UTF-8
-NeedsCompilation: no
+    respirometry,
+    stats,
+    stringr,
+    utils
+Suggests: knitr,
+          rmarkdown

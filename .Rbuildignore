@@ -1,0 +1,5 @@
+R/live_tests.R
+.github
+.gitignore
+^doc$
+^Meta$

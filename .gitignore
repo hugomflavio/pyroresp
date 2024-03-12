@@ -33,3 +33,5 @@ vignettes/*.pdf
 rsconnect/
 
 R/live_tests.R
+/doc/
+/Meta/

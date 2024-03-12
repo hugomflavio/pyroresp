@@ -1,0 +1,21 @@
+---
+title: "pyroresp workflow"
+author: "Hugo Flávio"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{pyroresp workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Structuring your input data
+
+Pyro workbench output
+Device name
+
+Phases file
+Device name
+
+The load_experiment function
+

@@ -12,6 +12,7 @@ Designed to analyse intermittent-flow respirometry data. This is a sibling packa
 Useful links:
 \itemize{
   \item \url{https://github.com/hugomflavio/pyroresp}
+  \item Report bugs at \url{https://github.com/hugomflavio/pyroresp/issues}
 }
 
 }

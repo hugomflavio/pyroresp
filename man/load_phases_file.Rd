@@ -4,13 +4,17 @@
 \alias{load_phases_file}
 \title{import flush and measurement phase times recorded by the program CoolTerm.}
 \usage{
-load_phases_file(file, max.gap.fix = 1)
+load_phases_file(file, fix_phases)
 }
 \arguments{
 \item{file}{The name of the file to be imported.}
+
+\item{fix_phases}{Automatically correct any overlaps, gaps, or repeated
+phase names found in the file.}
 }
 \value{
-A data.frame containing the start and stop timestamps of the recorded phases.
+A data frame containing the start and
+stop timestamps of the recorded phases.
 }
 \description{
 Updated function for the new pump controller with four individual controls

@@ -4,15 +4,20 @@
 \alias{clean_meas}
 \title{Prepare imported measurements for further analyses}
 \usage{
-clean_meas(input, wait = 0, auto.cut.last = FALSE)
+clean_meas(input, wait = 0, auto_cut_last = FALSE)
 }
 \arguments{
 \item{input}{the data frame containing imported oxygen measurements}
 
-\item{wait}{integer: the number of first rows for each measurement phase (M) which should be reassigned to the wait phase (W). The parameter should be used when the wait phase (W) is absent (e.g. in 'Q-box Aqua' logger software) or not long enough to eliminate non-linear change in DO concentration over time from the measurement phase (M) after shutting off water supply from the ambient water source.}
+\item{wait}{integer: the number of first rows for each measurement phase (M)
+which should be reassigned to the wait phase (W). Note: If your
+phase-tracking device already assigns a wait phase, set this to 0.}
+
+\item{auto_cut_last}{Should the last recorded phase be automatically cut?
+useful if the experiment was terminated mid-measurement.}
 }
 \value{
-A data.frame containing measurements valid for further analyses
+A data frame containing measurements valid for further analyses
 }
 \description{
 Prepare imported measurements for further analyses

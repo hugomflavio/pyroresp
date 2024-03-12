@@ -1,54 +1,87 @@
-#' Dummy documentation
+#' Convert a human-friendly respirometry table to a computer-friendly format
+#' 
+#' Also appends additional probe info if provided.
+#' 
+#' @param input A dataframe with oxygen, temperature, pressure, and phase data.
+#'  The output of \code{\link{merge_pyro_phases}}
+#' @inheritParams load_experiment
 #' 
 #' @export
 #' 
-melt_resp <- function(input, info.data, O2.unit) {
+melt_resp <- function(input, probe_info) {
 
-  pre_output <- data.table::data.table(Date.Time = rep(input$Date.Time, each = sum(grepl("Ox", colnames(input)))),
-                       Probe = rep(sub("Phase.", "", colnames(input)[grep("Phase.", colnames(input))]), length.out = nrow(input) * sum(grepl("Phase", colnames(input)))),
-                       Phase = as.vector(t(input[, grepl("Phase", colnames(input))])),
-                       Pressure = as.vector(t(input[, grepl("Pressure", colnames(input))])),
-                       Temp = as.vector(t(input[, grepl("Temp", colnames(input))])),
-                       O2.raw = as.vector(t(input[, grepl("Ox", colnames(input))])))
+  ox_aux <- reshape2::melt(input, 
+    id.vars = "date_time",
+    measure.vars = colnames(input)[grepl("ox_", colnames(input))],
+    value.name = "o2",
+  )
+  ox_aux$probe <- stringr::str_extract(ox_aux$variable, "(?<=ox_).*")
+  ox_aux$variable <- NULL
+  colnames(ox_aux)[1] <- "date_time"
+  ox_aux <- ox_aux[, c("date_time", "probe", "o2")]
 
-  if (any(grepl("pH", colnames(input))))
-    pre_output$pH <- as.vector(t(input[, grepl("pH", colnames(input))]))
+  pressure_aux <- reshape2::melt(input, 
+    id.vars = "date_time",
+    measure.vars = colnames(input)[grepl("pressure_", colnames(input))],
+    value.name = "pressure"
+  )
+  pressure_aux$variable <- NULL
+  pressure_aux$date_time <- NULL
 
-  pre_output$Cycle <- as.numeric(sub("F|M", "", as.character(pre_output$Phase)))
+  temp_aux <- reshape2::melt(input, 
+    id.vars = "date_time",
+    measure.vars = colnames(input)[grepl("temp_", colnames(input))],
+    value.name = "temp"
+  )
+  temp_aux$variable <- NULL
+  temp_aux$date_time <- NULL
+
+  phase_aux <- reshape2::melt(input, 
+    id.vars = "date_time",
+    measure.vars = colnames(input)[grepl("phase_", colnames(input))],
+    value.name = "phase"
+  )
+  phase_aux$variable <- NULL
+  phase_aux$date_time <- NULL
+
+  pre_output <- cbind(ox_aux, pressure_aux, temp_aux, phase_aux)
+
+  if (any(grepl("ph_", colnames(input))))
+    pre_output$ph <- as.vector(t(input[, grepl("ph_", colnames(input))]))
+
+  pre_output$cycle <- as.numeric(sub("F|M", "", as.character(pre_output$phase)))
 
   # if fish information is provided
-  if (!missing(info.data)) {
+  if (!is.null(probe_info)) {
     # include fish information
-    link <- match(pre_output$Probe, info.data$Probe)
-    pre_output <- cbind(pre_output, info.data[link, c("ID", "Mass", "Volume")])
+    link <- match(pre_output$probe, probe_info$probe)
+    pre_output <- cbind(pre_output, probe_info[link, c("id", "mass", "volume")])
+  
+    # and trim away the cycles that happen before the first_cycle
 
-    # and trim away the cycles that happen before the first measurement
-
-    by.chamber <- split(pre_output, pre_output$Probe)
+    by_probe <- split(pre_output, pre_output$probe)
     
-    recipient <- lapply(names(by.chamber), function(the.chamber, info.data) {
+    recipient <- lapply(names(by_probe), function(the_probe, probe_info) {
 
-      trimmed.db <- by.chamber[[the.chamber]]
+      trimmed_db <- by_probe[[the_probe]]
 
-      first.meas <- info.data$First.meas[info.data$Probe == the.chamber]
-      if (!is.na(first.meas)) {
-        trimmed.db <- trimmed.db[trimmed.db$Cycle >= first.meas, ]
+      first_cycle <- probe_info$first_cycle[probe_info$probe == the_probe]
+      if (!is.na(first_cycle)) {
+        trimmed_db <- trimmed_db[trimmed_db$cycle >= first_cycle, ]
       } else {
-        trimmed.db <- NULL
+        trimmed_db <- NULL
       }
       
-      return(trimmed.db) 
+      return(trimmed_db) 
 
-    }, info.data = info.data)
+    }, probe_info = probe_info)
 
     output <- as.data.frame(data.table::rbindlist(recipient))
   } else {
     output <- as.data.frame(pre_output)
   }
 
-  output$Phase <- as.character(output$Phase)
-
-  colnames(output)[colnames(output) == 'O2.raw'] <- paste0('O2.', O2.unit)
+  output$phase <- as.character(output$phase)
 
   return(output)
 }

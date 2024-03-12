@@ -2,21 +2,26 @@
 % Please edit documentation in R/phases_functions.R
 \name{replicate_phases}
 \alias{replicate_phases}
-\title{Expand phases to other chambers}
+\title{Replicate phases from one probe to others}
 \usage{
-replicate_phases(input, from_device, to_device, from_channel, to_channel)
+replicate_phases(input, from_device, from_channel, to_device, to_channel)
 }
 \arguments{
-\item{input}{The phases list}
+\item{input}{A list containing imported experiment data.
+The output from \code{\link{load_experiment}}}
 
 \item{from_device}{Name of the device from which to copy}
 
-\item{to_device}{Name of the device to which to copy (can be the same)}
-
 \item{from_channel}{Name of the channel within "from_device" to duplicate}
 
-\item{to_channel}{Name of the channel (or channels if vector) to which to duplicate.}
+\item{to_device}{Name of the device to which to copy (can be the same)}
+
+\item{to_channel}{Name of the channel (or channels if vector)
+to which to replicate.}
+}
+\value{
+The input list with a corrected phases list.
 }
 \description{
-Useful when using one flush pump for many chambers
+Useful when using one flush pump for many chambers/probes
 }

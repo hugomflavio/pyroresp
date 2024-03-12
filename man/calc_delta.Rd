@@ -2,10 +2,18 @@
 % Please edit documentation in R/o2_calcs_functions.R
 \name{calc_delta}
 \alias{calc_delta}
-\title{Dummy documentation}
+\title{Calculate oxygen delta for each cycle}
 \usage{
-calc_delta(input, O2_col)
+calc_delta(input)
+}
+\arguments{
+\item{input}{a data frame with cleaned measurements.
+The output of \code{\link{clean_meas}}.}
+}
+\value{
+The input data frame with calculated deltas for o2 and airsat.
 }
 \description{
-Dummy documentation
+Subtracts the initial oxygen value to the remaining,
+for each probe*cycle combination.
 }

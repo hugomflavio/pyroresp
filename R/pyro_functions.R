@@ -1,479 +1,266 @@
-#' Dummy documentation
-#' 
+#' Fill in missing datapoints using the nearest available data.
+#'
+#' At high sampling rates, data points can occasionally be lost, causing odd
+#' interruptions in the temperature and/or oxygen traces.
+#' This function fills in those gaps.
+#'
+#' @param input A dataframe containing Timestamps on the first column and
+#' 	matching data on the remaining. If input contains a "phase" column, it will
+#' 	be transported to the output unchanged.
+#' @param patch_method One of:
+#' 	'linear' to capture the nearest before and after non-NA values and make a
+#' 			 linear interpolation.
+#' 	'before' to find the nearest non-NA value before the NA and use it to fill
+#' 			 the gap.
+#' 	'after'  to do the same as above but with the nearest value coming after
+#' 			 the NA.
+#' @param verbose Logical. Should exceptions be reported out loud.
+#' 	Defaults to TRUE.
+#'
+#' @return The input table with the NAs filled in as requested.
+#'
 #' @export
-#' 
-patch.NAs <- function(input, method = c('linear', 'before', 'after'), verbose = TRUE) {
-	columns.to.check <- colnames(input)[-c(1, grep("Phase", colnames(input)))]
-	logical_input <- apply(input, 2, function(x) is.na(x))
+#'
+patch_NAs <- function(input, patch_method = c('linear', 'before', 'after'),
+		verbose = TRUE) {
+
+	patch_method <- match.arg(patch_method)
+
+	columns_to_check <- colnames(input)[-c(1, grep("phase", colnames(input)))]
+	logical_input <- apply(input, 2, is.na)
 	rle_list <- apply(logical_input, 2, rle)
 
-	capture <- lapply(columns.to.check, function(i) {
-		# cat(i, '\n')
+	# run the loop for each column separately
+	capture <- lapply(columns_to_check, function(i) {
+		# start by finding the gaps in the column and storing them in a table
 		aux <- cumsum(rle_list[[i]]$lengths)
 		breaks <- data.frame(Value = rle_list[[i]]$values,
-												 Start = c(1, aux[-length(aux)] + 1),
-												 Stop = aux)
+							 Start = c(1, aux[-length(aux)] + 1),
+							 Stop = aux)
 
+		# if there are any breaks, start working on them
 		if (any(breaks$Value)) {
 			nas <- breaks[breaks$Value, ]
+			# for every break found, apply the correction
 			for (j in 1:nrow(nas)) {
-				# cat(j, '\n')
-				if (method == 'linear') {
+				if (patch_method == 'linear') {
+					# failsafe against NAs at the start when using linear
 					if (nas$Start[j] == 1) {
-						if (verbose) warning("NAs found at the start of a column. Using method = 'after' for this instance.", immediate. = TRUE, call. = FALSE)
-						input[nas$Start[j]:nas$Stop[j], i] <<- input[nas$Stop[j] + 1, i]
-					} 
-					else if (nas$Stop[j] == nrow(input)) {
-						if (verbose) warning("NAs found at the end of a column. Using method = 'before' for this instance.", immediate. = TRUE, call. = FALSE)
-						input[nas$Start[j]:nas$Stop[j], i] <<- input[nas$Start[j] - 1, i]
-					} 
-					else {
-						fake_values <- seq(from = input[nas$Start[j] - 1, i],
-															 to = input[nas$Stop[j] + 1, i],
-															 length.out = nas$Stop[j] - nas$Start[j] + 3) # 1 for the before value, 1 for the after, and 1 for the value that is eliminated by the subtraction
-						input[(nas$Start[j] - 1):(nas$Stop[j] + 1), i] <<- fake_values					
+						if (verbose) {
+							warning("NAs found at the start of a column.",
+								" Using method = 'after' for this instance.",
+								immediate. = TRUE, call. = FALSE)
+						}
+						missing_interval <- nas$Start[j]:nas$Stop[j]
+						replacement <- input[nas$Stop[j] + 1, i]
 					}
-				}
-				if (method == 'before') {
-					if (nas$Start[j] == 1) {
-						if (verbose) warning("NAs found at the start of a column. Using method = 'after' for this instance.", immediate. = TRUE, call. = FALSE)
-						input[nas$Start[j]:nas$Stop[j], i] <<- input[nas$Stop[j] + 1, i]
-					} 
-					else {
-						input[nas$Start[j]:nas$Stop[j], i] <<- input[nas$Start[j] - 1, i]
-					}
-				}
-				if (method == 'after') {
+					# failsafe against NAs at the end when using linear
 					if (nas$Stop[j] == nrow(input)) {
-						if (verbose) warning("NAs found at the end of a column. Using method = 'before' for this instance.", immediate. = TRUE, call. = FALSE)
-						input[nas$Start[j]:nas$Stop[j], i] <<- input[nas$Start[j] - 1, i]
+						if (verbose) {
+							warning("NAs found at the end of a column.",
+								" Using method = 'before' for this instance.",
+								immediate. = TRUE, call. = FALSE)
+						}
+						missing_interval <- nas$Start[j]:nas$Stop[j]
+						replacement <- input[nas$Start[j] - 1, i]
+					}
+					if (nas$Start[j] != 1 && nas$Stop[j] != nrow(input)) {
+						missing_interval <- (nas$Start[j] - 1):(nas$Stop[j] + 1)
+						replacement <- seq(
+							from = input[nas$Start[j] - 1, i],
+							to = input[nas$Stop[j] + 1, i],
+							length.out = nas$Stop[j] - nas$Start[j] + 3
+						)
+						# Explanation for the +3 in the length.out above:
+						# +1 to repeat the last known value before the break
+						# +1 to replace the first known value after the
+						# break.
+						# +1 to compensate for the one that is lost when
+						# doing Stop - Start. E.g. row 3 - row 2 = 1, but both
+						# row 3 and 2 are NAs
+					}
+				}
+				if (patch_method == 'before') {
+					if (nas$Start[j] == 1) {
+						if (verbose) {
+							warning("NAs found at the start of a column.",
+								" Using method = 'after' for this instance.",
+								immediate. = TRUE, call. = FALSE)
+						}
+						missing_interval <- nas$Start[j]:nas$Stop[j]
+						replacement <- input[nas$Stop[j] + 1, i]
 					}
 					else {
-						input[nas$Start[j]:nas$Stop[j], i] <<- input[nas$Stop[j] + 1, i]						
-					}				 
+						missing_interval <- nas$Start[j]:nas$Stop[j]
+						replacement <- input[nas$Start[j] - 1, i]
+					}
 				}
+				if (patch_method == 'after') {
+					if (nas$Stop[j] == nrow(input)) {
+						if (verbose) {
+							warning("NAs found at the end of a column.",
+								" Using method = 'before' for this instance.",
+								immediate. = TRUE, call. = FALSE)
+						}
+						missing_interval <- nas$Start[j]:nas$Stop[j]
+						replacement <- input[nas$Start[j] - 1, i]
+					}
+					else {
+						missing_interval <- nas$Start[j]:nas$Stop[j]
+						replacement <- input[nas$Stop[j] + 1, i]
+					}				
+				}
+				input[missing_interval, i] <<- replacement
 			}
 		}
 	})
-
 	return(input)
 }
 
 
-#' Confirm that the pyroscience input contains the expected columns
-#' 
-#' @param x the input data.frame
-#' 
-#' @return a data frame with ordered columns
-#' 
-#' @keywords internal
-#' 
-check.pyrocience.data <- function(x) {
-	column.names <- c("Date.Time", "Phase", "Temp.1", "Ox.1", "Temp.2", "Ox.2", "Temp.3", "Ox.3", "Temp.4", "Ox.4")
-	check <- match(colnames(x), column.names[1:ncol(x)])
-
-	if (any(is.na(check)))
-		stop("The PyroScience dataframe columns do not match the expected.\n			 The column names should be: '", paste(column.names[1:ncol(x)], collapse = "', '"), "'.", call. = FALSE)
-
-	if (!any(grepl("POSIXct", class(x$Date.Time))))
-		stop("Please format the column 'Date.Time' as POSIXct in the PyroScience input")
-
-	return(x[, column.names[1:ncol(x)]])
-}
-
-
-#' Load a single channel file
-#' 
-#' @param file the input file
-#' 
-#' @return the imported channel file
-#' 
+#' Load a single raw channel file
+#'
+#' @param file the path to a raw channel data file.
+#' @param date_format the format used in the raw date values (locale dependent)
+#' @param skip Number of data rows to skip. Defaults to 0. Note: This is not the
+#' 	number of lines to skip from the top of the file. It is the number of lines
+#' 	to skip once the actual raw data starts.
+#' @param tz The time zone of the data. Defaults to the system time zone.
+#'
+#' @return A data frame containing the inported data
+#'
 #' @export
-#' 
-load_pyro_o2_file <- function(file, date.format, skip = 0, tz = Sys.timezone()) {
-	if (length(file) == 0 || !file.exists(file))
+#'
+read_pyro_raw_file <- function(file, date_format,
+		skip = 0, tz = Sys.timezone()) {
+
+	if (length(file) == 0 || !file.exists(file)) {
 		stop("Could not find target file.", call. = FALSE)
+	}
 
-	# grab first row to compile col names
-	aux <- utils::read.table(file, sep = "\t", skip = 24, header = FALSE, strip.white = TRUE, nrows = 1)
-	# grab rest of rows with the actual data
-	output <- utils::read.table(file, sep = "\t", skip = 25 + skip, header = FALSE, strip.white = TRUE)
+	# identify device and channel name
+	aux <- readLines(file, n = 10)
+	aux <- aux[grepl("^#Device", aux)]
+	device <- stringr::str_extract(aux,'(?<= )[^ ]*')
+	ch <- stringr::str_extract(file,'(?<=Ch.)[0-9]')
 
-	a <- gsub(" .*$", "", aux[1,]) # grab first word only
-	b <- gsub("^.* ", "", aux[1,]) # grab last word only
-	b <- gsub(']', '', b) # remove lingering bracket
+	if (grepl("Oxygen\\.txt$", file) || grepl("pH\\.txt$", file)) {
 
-	colnames(output) <- paste0(a, '.', b) # combine first and last words
+		base_skip <- if (grepl("Oxygen\\.txt$", file)) 24 else 20
 
-	output$Date.Time <- as.POSIXct(paste(output$Date.Main, output$Time.Main), format = paste(date.format, "%H:%M:%S"), tz = tz)
+		# grab first row to compile col names
+		file_header <- utils::read.table(file, sep = "\t", skip = base_skip,
+								 header = FALSE, strip.white = TRUE, nrows = 1)
+
+		# grab rest of rows with the actual data
+		output <- utils::read.table(file, sep = "\t",
+									skip = base_skip + 1 + skip,
+									header = FALSE, strip.white = TRUE)
+
+		# grab first and last words of the headers.
+		a <- gsub(" .*$", "", file_header[1,])
+		b <- gsub("^.* ", "", file_header[1,])
+		b <- gsub(']', '', b)
+
+		# combine first and last words as new column names
+		colnames(output) <- tolower(paste0(a, '_', b))
+
+		# Ensure there are no duplicated colum names (data.table shenanigans)
+		output <- output[, !duplicated(colnames(output))]
+	}
+
+	if (grepl("TempPT100Port\\.txt$", file)) {
+		output <- utils::read.table(file, sep = "\t", skip = 12 + skip,
+									header = FALSE, strip.white = TRUE)
+
+		colnames(output) <- c('date_main', 'time_main', 'ds', 'temp', 'status')
+	}
+
+	# calculate POSIX timestamp
+	date_time_aux <- paste(output$date_main, output$time_main)
+	date_format <- paste(date_format, "%H:%M:%S")
+	output$date_time <- as.POSIXct(date_time_aux, format = date_format, tz = tz)
+
+	# reorganize columns
+	if (grepl("Oxygen\\.txt$", file)) {
+		output <- output[, c('date_time', 'sample_compt',
+							 'pressure_compp', 'oxygen_main')]
+		# units
+		file_header_string <- paste(file_header, collapse = " ")
+		o2_unit <- stringr::str_extract(file_header_string, 
+										"(?<=Oxygen \\()[^\\)]*")
+		units(output$oxygen_main) <- o2_unit
+
+		pr_unit <- stringr::str_extract(file_header_string, 
+										"(?<=Pressure \\()[^\\)]*")
+		units(output$pressure_compp) <- pr_unit
+
+		tp_unit <- stringr::str_extract(file_header_string, 
+										"(?<=Sample Temp. \\()[^\\)]*")
+		units(output$sample_compt) <- tp_unit
+
+		colnames(output)[2:4] <- paste0(c('temp_', 'pressure_', 'ox_'),
+										device, ch)
+		file_type <- "oxygen"
+	}
+
+	if (grepl("pH\\.txt$", file)) {
+		output <- output[, c('date_time', 'ph_main')]
+
+		# units
+		units(output$ph_main) <- "pH"
+
+		colnames(output)[2] <- paste0(c('ph_'),	device, ch)
+		file_type <- "ph"
+	}
+
+	if (grepl("TempPT100Port\\.txt$", file)) {
+		output <- output[, c('date_time', 'temp')]
+
+		# units
+		file_header_string <- paste(file_header, collapse = " ")
+		tp_unit <- stringr::str_extract(file_header_string, 
+										"(?<=Sample Temp. \\()[^\\)]*")
+		units(output$temp_main) <- tp_unit
+
+		colnames(output)[2] <- paste0(c('temp_'), device, ch)
+
+		file_type <- "temp"
+	}
+
+	attributes(output)$source_file <- file
+	attributes(output)$device <- device
+	attributes(output)$ch <- ch
+	attributes(output)$file_type <- file_type
 
 	return(output)
 }
 
 
-#' Load a single channel file
+#' Discard readings
 #' 
-#' @param file the input file
+#' Discard the data from one or more phases of one or more probes.
 #' 
-#' @return the imported channel file
+#' @param input A computer-friendly data frame.
+#' 	The output of \code{\link{melt_resp}} or any downstream function.
+#' @param probe The probe(s) from which to discard data. Ommit to discard phases
+#' 	from all probes.
+#' @param phase The phase(s) to discard.
 #' 
+#' @return the input data frame without the discarded readings.
+#'
 #' @export
-#' 
-load_pyro_pH_file <- function(file, date.format, skip = 0, tz = Sys.timezone()) {
-	if (length(file) == 0 || !file.exists(file))
-		stop("Could not find target file.", call. = FALSE)
-
-	# grab first row to compile col names
-	aux <- utils::read.table(file, sep = "\t", skip = 20, header = FALSE, strip.white = TRUE, nrows = 1)
-	# grab rest of rows with the actual data
-	output <- utils::read.table(file, sep = "\t", skip = 21 + skip, header = FALSE, strip.white = TRUE)
-
-	a <- gsub(" .*$", "", aux[1,]) # grab first word only
-	b <- gsub("^.* ", "", aux[1,]) # grab last word only
-	b <- gsub(']', '', b) # remove lingering bracket
-
-	colnames(output) <- paste0(a, '.', b) # combine first and last words
-
-	output <- output[, !duplicated(colnames(output))]
-
-	output$Date.Time <- as.POSIXct(paste(output$Date.Main, output$Time.Main), format = paste(date.format, "%H:%M:%S"), tz = tz)
-
-	return(output)
-}
-
-
-
-#' Load a single channel file
-#' 
-#' @param file the input file
-#' 
-#' @return the imported channel file
-#' 
-#' @export
-#' 
-load_pyro_temp_file <- function(file, date.format, skip = 0, tz = Sys.timezone()) {
-	if (length(file) == 0 || !file.exists(file))
-		stop("Could not find target file.", call. = FALSE)
-
-	output <- utils::read.table(file, sep = "\t", skip = 12 + skip, header = FALSE, strip.white = TRUE)
-
-	colnames(output) <- c('Date', 'Time', 'ds', 'Temp', 'Status')
-
-	output$Date.Time <- as.POSIXct(paste(output$Date, output$Time), format = paste(date.format, "%H:%M:%S"), tz = tz)
-
-	output <- output[, c('Date.Time', 'ds', 'Temp', 'Status')]
-
-	return(output)
-}
-
-
-
-
-#' dummy documentation
-#' 
-#' scan a target folder for a phases file and a pyroscience experiment file. import them.
-#' 
-#' @export
-#' 
-load_pyro_files <- function(folder, legacy.phases = FALSE, legacy.device.name = TRUE, max.gap.fix = 1) {
-	if (length(folder) == 0 || length(folder) > 1 || !dir.exists(folder))
-		stop('Could not find target folder')
-
-	phases_file <- list.files(folder)[grepl("CoolTerm", list.files(folder))]
-	
-	if (length(phases_file) == 0)
-		stop('Could not find phases file')
-	else
-		phases_file <- paste0(folder, "/", phases_file)
-
-	output <- list()
-
-	phases <- lapply(phases_file, function(file) {
-		if (legacy.phases)
-			load_legacy_phases_file(file, max.gap.fix = max.gap.fix)
-		else
-			load_phases_file(file, max.gap.fix = max.gap.fix)
-	})
-
-	if (legacy.device.name) {
-		if(length(phases) > 1) {
-			names(phases) <- stringr::str_extract(phases_file,'[A-Z](?=.txt)')
-		} else {
-			names(phases) <- "A"
-		}
+#'
+discard_phase <- function(input, probe, phase) {
+	target_phases <- input$cleaned$phase %in% phase 
+	if (missing(probe)) {
+		target_probes <- rep(TRUE, nrow(input$cleaned))
 	} else {
-		names(phases) <- stringr::str_extract(phases_file,'(?<=_)[^_]*(?=.txt)')
-	}
-	
-	output$phases <- phases
-	output$pyro <- compile_pyro_data(folder, legacy.device.name = legacy.device.name)
-	return(output)
-}
-
-
-
-#' dummy documentation
-#' 
-#' scan a target folder for pyroscience files matching a pattern and combine them.
-#' 
-#' @param folder the pyroscience run folder, containing a "ChannelData" folder inside
-#' @param pattern The type of variable to look for. Currently accepted values: "Oxygen", "pH"
-#' 
-#' @export
-#' 
-compile_pyro_data <- function(folder, legacy.device.name = TRUE) {
-	files <- list.files(paste0(folder, '/ChannelData/'))
-
-	file.link <- grepl("Oxygen|pH", files)
-
-	if (all(!file.link)) {
-		stop('No probe files found')
+		target_probes <- input$cleaned$probe %in% probe
 	}
 
-	files <- files[file.link]
+	to_keep <- !(target_phases & target_probes)
 
-	sourcedata <- lapply(files, function(i) {
-		if (legacy.device.name) {
-			device <- stringr::str_extract(i,'[A-Z](?= Ch.)')
-		} else {
-			aux <- readLines(paste0(folder, '/ChannelData/', i), n = 10)
-			aux <- aux[grepl("^#Device", aux)]
-			device <- stringr::str_extract(aux,'(?<= )[^ ]*')
-		}
-		ch <- stringr::str_extract(i,'(?<=Ch.)[0-9]')
-
-		if (grepl("Oxygen", i)) {
-			x <- load_pyro_o2_file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
-			x <- x[, c('Date.Time', 'Sample.CompT', 'Pressure.CompP', 'Oxygen.Main')]
-			colnames(x)[2:4] <- paste0(c('Temp.', 'Pressure.', 'Ox.'),	device, ch)
-			file.type <- "Oxygen"
-		}
-
-	 
-		if (grepl("pH", i)) {
-			x <- load_pyro_pH_file(paste0(folder, '/ChannelData/', i), date.format = '%d-%m-%Y')
-			x <- x[, c('Date.Time', 'pH.Main')]
-			colnames(x)[2] <- paste0(c('pH.'),	device, ch)
-			file.type <- "pH"
-		}
-
-		attributes(x)$sourcefile <- paste0(folder, '/ChannelData/', i)
-		attributes(x)$device <- device
-		attributes(x)$ch <- ch
-		attributes(x)$filetype <- file.type
-		return(x)
-	})
-
-
-	very.start <- min(as.POSIXct(sapply(sourcedata, function(i) {
-		as.character(min(i$Date.Time))
-	})))
-
-	very.end <- max(as.POSIXct(sapply(sourcedata, function(i) {
-		as.character(max(i$Date.Time))
-	})))
-
-	recipient <- data.frame(Date.Time = seq(from = very.start, to = very.end, by = 1),
-													Phase = NA_character_)
-
-	for (i in sourcedata) {
-		recipient <- merge(recipient, i[!duplicated(i$Date.Time), ], by = 'Date.Time', all = TRUE)
-	}
-
-	attributes(recipient)$latestbatchstart <- 1
-
-	output <- list(sourcedata = sourcedata, compileddata = recipient)
-	return(output)
-}
-
-
-#' dummy documentation
-#' 
-#' perform standard processing operations to the pyro/phases files
-#' 
-#' @export
-#' 
-process_pyro_files <- function(input, wait, chamber.info, O2_unit, min_temp, max_temp, start_time, stop_time, patch_NAs = TRUE) {
-
-	all_units = c("percent_a.s.", "percent_o2", "hPa", "kPa",																											
-				 "torr", "mmHg", "inHg", "mg_per_l", "ug_per_l", "umol_per_l",																							
-				 "mmol_per_l", "ml_per_l", "mg_per_kg", "ug_per_kg", "umol_per_kg",																				 
-				 "mmol_per_kg", "ml_per_kg", "volumes_percent")																														 
-
-	if (!(O2_unit %in% all_units))																																										
-			stop("the 'O2_argument' argument is not an acceptable unit. Please choose one of the following: ", paste(all_units, collapse = ", ")) 
-
-	if (!missing("chamber.info")) {
-		input$chamber.info <- chamber.info
-	}
-
-  	message("Merging pyroscience and phases file")
-	input$phased <- merge_pyroscience_phases(input)
-  	if (patch_NAs) {
-  		message("Patching NA's in the data")
-		input$phased <- patch.NAs(input$phased, method = 'linear', verbose = FALSE)
-	}
-	message("Melting resp data into computer-friendly format")
-  	input$meas_raw <- melt_resp(input = input$phased, info.data = chamber.info, O2.unit = O2_unit)
-	message("Removing flush and wait values")
-  	input$meas <- clean_meas(input = input$meas_raw, wait = wait)
-
-	message("Converting O2 units and measuring delta")
-	input$meas_raw$O2.umol.l <- respirometry::conv_o2(input$meas_raw[, paste0("O2.", O2_unit)], from = O2_unit, to = 'umol_per_l', temp = input$meas_raw$Temp, sal = 0, atm_pres = input$meas_raw$Pressure)
-	input$meas$O2.umol.l <- respirometry::conv_o2(input$meas[, paste0("O2.", O2_unit)], from = O2_unit, to = 'umol_per_l', temp = input$meas$Temp, sal = 0, atm_pres = input$meas$Pressure)
-	input$meas$O2.a.s <- respirometry::conv_o2(input$meas[, paste0("O2.", O2_unit)], from = O2_unit, to = 'percent_a.s.', temp = input$meas$Temp, sal = 0, atm_pres = input$meas$Pressure)
- 
-	input$meas <- calc_delta(input$meas, O2_col = "O2.umol.l")
-
-	if (!missing(min_temp)) {
-		cutoff <- head(which(input$meas$Temp > min_temp), 1)
-		if (length(cutoff) == 0) {
-			stop ("Temperature never rose above ", min_temp, ".")
-		} else {
-			first_true <- which(input$meas$Phase == input$meas$Phase[cutoff])[1]
-			time_break <- input$meas$Date.Time[first_true]
-			input$meas <- input$meas[input$meas$Date.Time >= time_break, ]
-		}
-	}
-
-	if (!missing(max_temp)) {
-		cutoff <- head(which(input$meas$Temp < max_temp), 1)
-		if (length(cutoff) == 0) {
-			stop ("Temperature never dropped below ", max_temp, ".")
-		} else {
-			first_true <- which(input$meas$Phase == input$meas$Phase[cutoff])[1]
-			time_break <- input$meas$Date.Time[first_true]
-			input$meas <- input$meas[input$meas$Date.Time >= time_break, ]
-		}	
-	}
-
-	if (!missing(start_time)) {
-		cutoff <- head(which(input$meas$Date.Time >= as.POSIXct(start_time)), 1)
-		if (length(cutoff) == 0) {
-			stop ("Data ends before ", start_time, ".")
-		} else {
-			first_phase <- input$meas$Phase[cutoff]
-			first_true <- head(which(input$meas$Phase == first_phase), 1)
-			time_break <- input$meas$Date.Time[first_true]
-			input$meas <- input$meas[input$meas$Date.Time >= time_break, ]
-		}
-	}
-
-	if (!missing(stop_time)) {
-		cutoff <- tail(which(input$meas$Date.Time <= as.POSIXct(stop_time)), 1)
-		if (length(cutoff) == 0) {
-			stop ("Data starts after ", stop_time, ".")
-		} else {
-			last_phase <- input$meas$Phase[cutoff]
-			last_true <- tail(which(input$meas$Phase == last_phase), 1)
-			time_break <- input$meas$Date.Time[last_true]
-			input$meas <- input$meas[input$meas$Date.Time <= time_break, ]
-		}
-	}
-
+	input$cleaned <- input$cleaned[to_keep, ]
 	return(input)
-}
-
-#' dummy documentation
-#' 
-#' perform standard metabolic rate calculations in pyro datasets
-#' 
-#' @export
-#' 
-process_pyro_mr <- function(input, r2, O2_raw, smr.method = "calcSMR.low10pc", max.length = 99999) {
-	input$all.slopes <- calc_slope(input$corrected, O2_raw = O2_raw, max.length = max.length)
-
-	input$good.slopes <- extract_slope(input$all.slopes, r2 = r2)
-	
-	aux <- extract_slope(input$good.slopes, method = smr.method, r2 = r2)
-	input$smr.slope <- merge(input$chamber.info, aux[, !(colnames(aux) %in% c("ID", "Mass", "Volume"))], by = "Probe", all = TRUE)
-	
-	aux <- extract_slope(input$good.slopes, method = "max", r2 = r2, n.slope = 1)
-	input$mmr.slope <- merge(input$chamber.info, aux[, !(colnames(aux) %in% c("ID", "Mass", "Volume"))], by = "Probe", all = TRUE)
-	
-	input$mr <- calc_mr(input$good.slopes)
-	input$smr <- calc_mr(input$smr.slope)
-	input$mmr <- calc_mr(input$mmr.slope)
-
-	# convert O2/Kg to O2/g
-	input$smr$MR.mass.umol.g <- input$smr$MR.mass/1000
-	input$mmr$MR.mass.umol.g <- input$mmr$MR.mass/1000
-	input$mr$MR.mass.umol.g <- input$mr$MR.mass/1000
-
-	return(input)
-}
-
-
-
-
-# load.pyroscience.workbench.file <- function(file, date.format, o2_from, o2_to) {
-#	 if (!missing(o2_from) & !missing(o2_to))
-#		 convert_o2 <- TRUE
-#	 else
-#		 convert_o2 <- FALSE
-
-#	 if (!file.exists(file))
-#		 stop("Could not find target file.", call. = FALSE)
-
-#	 aux <- readLines(file, n = 100)
-#	 preamble <- suppressWarnings(max(grep("^#", aux)))
-	
-#	 aux <- suppressWarnings(aux[grepl("Ch.[1-4]\\] - Oxygen Sensor", aux)])
-#	 n.chambers <- length(sub("\\D*(\\d+).*", "\\1", aux))
-
-#	 rm(aux)
-
-#	 if (convert_o2) {
-#		 column.vector <- c(1, 2, 12, 17, 4, 30, 35, 22, 48, 53, 40, 66, 71, 58)[1:(2 + 3 * n.chambers)]
-#		 column.names <- c("Date", "Time", "Temp.1", "Pressure.1", "Ox.1", "Temp.2", "Pressure.2", "Ox.2", "Temp.3", "Pressure.3", "Ox.3", "Temp.4", "Pressure.4", "Ox.4")[1:(2 + 3 * n.chambers)]
-#	 } else {
-#		 column.vector <- c(1, 2, 12, 4, 30, 22, 48, 40, 66, 58)[1:(2 + 2 * n.chambers)]
-#		 column.names <- c("Date", "Time", "Temp.1", "Ox.1", "Temp.2", "Ox.2", "Temp.3", "Ox.3", "Temp.4", "Ox.4")[1:(2 + 2 * n.chambers)]
-#	 }
-
-#	 pyro <- as.data.frame(data.table::fread(file, sep = "\t", skip = preamble, strip.white = TRUE, tz = ""))
-
-#	 pyro <- pyro[, column.vector]
-#	 names(pyro) <- column.names
-
-#	 pyro$Date.Time <- paste(pyro$Date, pyro$Time)
-#	 pyro$Phase <- NA
-#	 pyro[pyro == "---"] <- NA
-	
-#	 pyro <- pyro[, c(ncol(pyro) - 1, ncol(pyro), 3:(ncol(pyro)-2))]
-	
-#	 pyro$Date.Time <- as.POSIXct(pyro$Date.Time, format = paste(date.format, "%H:%M:%S"), tz = Sys.timezone())
-
-#	 # failsafe in case the file comes with a trailing NA line
-#	 if (all(is.na(pyro[nrow(pyro), ])))
-#		 pyro <- pyro[-nrow(pyro), ]
-
-#	 if (convert_o2) {
-#		 for (i in 1:n.chambers) {
-#			 pyro[, paste0("Ox.", i)] <- 
-#				 respirometry::conv_o2(o2 = pyro[, paste0("Ox.", i)],
-#															 from = o2_from,
-#															 to = o2_to,
-#															 temp = pyro[, paste0("Temp.", i)],
-#															 sal = 0, atm_pres = pyro[, paste0("Pressure.", i)])
-#		 }
-#		 pyro <- pyro[,!grepl("Pressure", colnames(pyro))]
-#	 }
-
-#	 if (any(is.na(pyro[,-1:-2])))
-#		 warning('NA values found in the data!', immediate. = TRUE, call. = FALSE)
-
-#	 return(pyro)
-# }
-
-
-#' dummy documentation
-#' 
-#' @export
-#' 
-remove_phase <- function(input, chamber, phase) {
-	if (missing(chamber))
-		input[!(input$Phase %in% phase), ]
-	else
-		input[!(input$Probe %in% chamber & input$Phase %in% phase), ]
 }
