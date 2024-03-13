@@ -42,6 +42,8 @@ check_arg_in_data <- function(arg, data, name, verbose = TRUE) {
 #' 
 #' @return a units object in ml
 #' 
+#' @export
+#' 
 conv_w_to_ml <- function(w, d = 1) {
   if (!inherits(w, "units")) {
     stop("w must be a units class object")
@@ -59,4 +61,65 @@ conv_w_to_ml <- function(w, d = 1) {
   units(x) <- "ml"
 
   return(x)
+}
+
+
+#' Assign device names after completing experiment
+#' 
+#' To use if you forgot to assign a device name at the start of the experiment.
+#' Goes through the raw data files, renames the required device names, and
+#' resaves the files.
+#' 
+#' NOTE: This function will modify the files in your data folder!
+#' 
+#' @inheritParams load_experiment
+#' @param assign_list A list of format device_letter = device_name for the
+#'  devices to rename based on their letter.
+#' 
+#' @return Nothing. Used for side effects.
+#' 
+#' @export
+#' 
+assign_device_names <- function(folder, assign_list) {
+	if (length(folder) == 0 || !dir.exists(folder)) {
+		stop('Could not find target folder')
+	}
+
+	if (length(folder) > 1) {
+		stop('"folder" should be a string of length 1.')		
+	}
+
+	files <- list.files(paste0(folder, '/ChannelData/'))
+
+	file_link <- grepl("Oxygen|pH", files)
+
+	if (all(!file_link)) {
+		stop('No probe files found')
+	}
+
+	files <- files[file_link]
+
+	capture <- lapply(files, function(i) {
+		the_file <- paste0(folder, '/ChannelData/', i)
+
+		x <- readLines(the_file)
+
+		r <- grep("^#Device", x)[1]
+
+		# identify device name and letter
+		device_name <- stringr::str_extract(x[r],'(?<=Device: )[^\\[]*')
+		device_name <- sub(" $", "", device_name)
+
+		device_letter <- 	stringr::str_extract(x[r],'(?<=\\[)[^\\]]*')
+
+		if (device_letter %in% names(assign_list)) {
+			x[r] <- sub(device_name, assign_list[[device_letter]], x[r])
+			writeLines(x, the_file)
+			message("Renamed device ", device_name, " [", device_letter , "] to ",
+							assign_list[[device_letter]])
+		} else {
+			message("Could not find match for device ", device_name,
+							" [", device_letter , "] in assign_list.")
+		}
+	})
 }

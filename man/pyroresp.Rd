@@ -2,8 +2,8 @@
 % Please edit documentation in R/pyroresp.R
 \docType{package}
 \name{pyroresp}
-\alias{pyroresp}
 \alias{pyroresp-package}
+\alias{pyroresp}
 \title{pyroresp: Analyse respirometry data captured by firesting loggers}
 \description{
 Designed to analyse intermittent-flow respirometry data. This is a sibling package of the FishResp R package.

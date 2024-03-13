@@ -9,13 +9,125 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-## Structuring your input data
+Welcome to pyroresp! This vignette will show you how to organize your data and which functions to use for each situation.
 
-Pyro workbench output
-Device name
+**Note:** Reading this before conducting experiments will make your life incredibly easier later on.
 
-Phases file
-Device name
+There are two main types of datasets in intermittent-flow respirometry: background readings, and metabolic rate readings. Sometimes, researchers also run a background chamber in parallel with their animals; which is something pyroresp can deal with as well.
 
-The load_experiment function
+## Important notes:
 
+pyroresp builds on/relates to the work of other people. Those relationships
+should be acknowledged:
+
+1. pyroresp originated as a fork of the R package [**FishResp**](https://github.com/embedded-sergey/FishResp-Rpackage), and only became an independent unit with the agreement of FishResp's author. While the two source codes have diverged greatly over time, some remnants of similarity can still be found here and there.
+2. The standard/routine metabolic rate calculation methods used in pyroresp are an adaptation of the appendix provided by Chabot et al ([**2016**](doi.org/10.1111/jfb.12845)) in their paper "The determination of standard metabolic rate in fishes." This is a great paper by the way; if you haven't read it yet, I recommend doing so before you start running your own respirometry experiments.
+3. While pyroresp's name shares a similarity with the pyroscience company (for the obvious reason that this package is meant to process the output of their loggers), pyroresp is not affiliated with pyroscience, and pyroscience is not responsible for any functionalities or consequences of using this package.
+
+
+## Expected input data
+
+Regardless of if you are importing a background or metabolic rate dataset, the input files should be organized in the same fashion. For the most part, the default file organization out of the workbench software is what you need. You will also want to have a file keeping track of the chamber phases inside the folder of the experiment. Here's an example of how your data folder should look like:
+
+<pre>
+- 2024-03-13_091010_pre_bg
+  |- ChannelData
+  |   |- Comments
+  |   |- <b>A_Firesting Pro (4 Channels)_(A CH.1)_Oxygen.txt</b>
+  |   |- <b>A_Firesting Pro (4 Channels)_(A CH.2)_Oxygen.txt</b>
+  |   |- <b>A_Firesting Pro (4 Channels)_(A CH.3)_Oxygen.txt</b>
+  |   |- <b>A_Firesting Pro (4 Channels)_(A CH.4)_Oxygen.txt</b>
+  |   |- <b>A_Firesting Pro (4 Channels)_(A T1)_TempPT100Port.txt</b>
+  |   |- StatusLegend.txt
+  |- 2024-03-13_091010_pre_bg.pyr
+  |- 2024-03-13_091010_pre_bg.txt
+  |- <b>Phases_file_A.txt</b>
+</pre>
+
+The files highlighted in bold are the ones relevant for pyroresp; namely the raw data files and the phases file. Note that your phases file name should contain something that makes it clearly distinguishable from the remaining text files present in the data folder (e.g. include the name "Phases"). It should also end with the name of the firesting device it relates to, preceded by an underscore (note: this is not the "A" displayed on the raw data file names).
+
+### Where is my device name and how do I rename it?
+On the left side of the workbench software you will find squares representing each device. The name of the device is indicated in the top left corner of each device. Change the device name to something **simple and without spaces**, so that renaming those phases files is an easy task. A simple letter such as "O" is a good device name.
+
+### What if I have more than one firesting plugged in?
+Then you must keep track of the device names and ensure you have one (and only one!) phases file for each device. Try to avoid ending device names in a number (such as "O1"), as that would generate  potentially confusing probe names (e.g. probe "1" of device "O1" would be named "O11"). Like before, include the device name at the end of the phases file name, preceded by an underscore. E.g. if you have named your devices "A" and "B", then your data folder must have a "Phases_file_A.txt" and a "Phases_file_B.txt."
+
+
+### Additional probe information
+Finally, for your metabolic rate dataset, you will also need a data frame containing pertinent information for each probe. This data frame should contain the following columns:
+
+- id: The ID of the animal
+- mass: The mass of the animal, in grams
+- volume: The non-corrected volume of the chamber + tubing
+- probe: The device-channel combination for the probe
+- first_cycle: The first cycle of valid data for that animal
+
+**Note:** The probe column should contain the device name and the probe. I.e. the first probe from device "O" should be referred to as probe "O1."
+
+### load_experiment()
+
+Once you have setup your data following the above, you are reading to load it in. For this, you can use the first wrapper provided by pyroresp; the function `load_experiment()`:
+
+```r
+pre_bg <- load_experiment(folder = "2024-03-13_091010_pre_bg", 
+                          date_format = "%d-%m-%Y", 
+                          tz = Sys.timezone(),
+                          phases_file = "Phases",
+                          fix_phases = TRUE)
+```
+
+**Notes:**
+
+- The **`date_format`** may depend on your settings. To check how the dates are being stored, you can open one of the raw data files highlighted in the schematic above and scroll down to the actual data. The dates will be the first column.
+- **`tz`**: The timezone of the collected data. this is important to ensure diel cycles are captured correctly, especially if you are planning on pairing this data with other, external sources of data.
+- **`phases_file`**: A word that identifies the phases files. In the example above, I named it "Phases_file_A.txt," so setting this argument to "Phases" allows R to match only the phases files.
+- **`fix_phases`**: Sometimes, pump controllers skip or overlap a second here and there. This is more likely to happen if the controller doesn't have an internal absolute clock. This argument defaults to TRUE and automatically corrects and gaps/overlaps found in the data. If the file contains repeated phase names, this will also fix that by renaming every phase from 1 onward. 
+
+You can find more about the output of `load_experiment()` in [**here**](outputs.rmd/load_experiment).
+
+## Preliminary data processing
+
+What needs to happen
+
+### process_experiment()
+
+
+## Processing the background data
+
+### calc_bg()
+
+### plot_bg()
+
+
+## Correcting/expanding the background data
+
+### discard_phase()
+
+### replace_bg()
+
+### extrapolate_bg()
+
+
+
+## Processing the run data
+
+Returns both SMR and MMR
+
+### subtract_bg()
+
+### process_mr()
+
+### plot_smr()
+
+### plot_experiment()
+
+
+## Obtaining rolling MO2 for a given phase
+
+### roll_mr()
+
+### plot_rolling_mr()
+
+## Discarding part of the rolling MO2
+
+### exclude_rolling_mr_segment()

@@ -1,0 +1,24 @@
+---
+title: "output details"
+author: "Hugo Flávio"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{output details}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Structuring your input data
+
+### load_experiment()
+
+### process_experiment()
+
+### calc_bg()
+
+### subtract_bg()
+
+### process_mr()
+
+### roll_mr()

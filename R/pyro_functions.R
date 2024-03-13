@@ -141,7 +141,8 @@ read_pyro_raw_file <- function(file, date_format,
 	# identify device and channel name
 	aux <- readLines(file, n = 10)
 	aux <- aux[grepl("^#Device", aux)]
-	device <- stringr::str_extract(aux,'(?<= )[^ ]*')
+	device <- stringr::str_extract(aux,'(?<=Device: )[^\\[]*')
+	device <- sub(" $", "", device)
 	ch <- stringr::str_extract(file,'(?<=Ch.)[0-9]')
 
 	if (grepl("Oxygen\\.txt$", file) || grepl("pH\\.txt$", file)) {

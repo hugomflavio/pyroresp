@@ -351,11 +351,16 @@ rename_phases <- function(input) {
 #' 
 merge_pyro_phases <- function(input) {
 	pyrodata <- input$pyro$compiled_data
-	pyrodata$phase <- NULL
 
 	phases <- input$phases
 
 	new_col_order <- 1
+
+	pyro_names <- colnames(pyrodata)
+	phase_names <- names(phases)
+
+	check_devices_match(colnames(pyrodata), names(phases))
+	check_probes_match(colnames(pyrodata), names(phases))
 
 	tmp <- lapply(1:length(phases), function(dvc) {
 		lapply(1:length(phases[[dvc]]), function(prb) {
@@ -367,9 +372,9 @@ merge_pyro_phases <- function(input) {
 			for (i in 1:nrow(phases[[dvc]][[prb]])) {
 				check1 <- pyrodata$date_time >= phases[[dvc]][[prb]]$start[i]
 				check2 <- pyrodata$date_time <= phases[[dvc]][[prb]]$stop[i]
-				this.phase <- check1 & check2
+				this_phase <- check1 & check2
 
-				pyrodata[this.phase, new_col] <- phases[[dvc]][[prb]]$phase[i]
+				pyrodata[this_phase, new_col] <- phases[[dvc]][[prb]]$phase[i]
 			}
 
 			NA_check <- is.na(pyrodata[, new_col])
@@ -405,7 +410,6 @@ merge_pyro_phases <- function(input) {
 	return(input)
 }
 
-
 #' Replicate phases from one probe to others
 #' 
 #' Useful when using one flush pump for many chambers/probes
@@ -437,3 +441,56 @@ replicate_phases <- function(input,
 
 	return(input)
 }
+
+#' confirm that the devices listed in the pyro input
+#' are present in the phases input
+#' 
+#' @param pyro_names A vector of column names from the compiled_data object
+#' @param phase_names the names of the phases list
+#' 
+#' @return nothing. Used for side effects
+#' 
+#' @keywords internal
+#' 
+check_devices_match <- function(pyro_names, phase_names) {
+	pyro_names <- pyro_names[!grepl("date_time", pyro_names)]
+	pyro_names <- stringr::str_extract(pyro_names, "(?<=_)[^$]*$")
+	device_names <- unique(sub("[0-9]$", "", pyro_names))
+	if( any(!(phase_names %in% device_names))) {
+		these <- !(phase_names %in% device_names)
+		stop("The could not find all the required device names in the ",
+			 "phases list. Are you sure you matched the names correctly? ",
+			 "Devices missing in phases input: ",
+			 paste(phase_names[these], collapse = ", "))
+	}
+}
+
+#' confirm that the probes listed for each device in the pyro input
+#' are present in the phases input
+#' 
+#' @param pyro_names A vector of column names from the compiled_data object
+#' @param phases The phases list.
+#' 
+#' @return nothing. Used for side effects
+#' 
+#' @keywords internal
+#' 
+check_probes_match <- function(pyro_names, phases) {
+	pyro_names <- pyro_names[!grepl("date_time", pyro_names)]
+	pyro_names <- stringr::str_extract(pyro_names, "(?<=_)[^$]*$")
+	device_names <- unique(sub("[0-9]$", "", pyro_names))
+	capture <- lapply(device_names, function(dvc) {
+		dvc_probes <- unique(pyro_names[grep(dvc, pyro_names)])
+		dvc_probes <- stringr::str_extract(dvc_probes, "[0-9]*$")
+		aux <- sub("ch", "", names(phases[[dvc]]))
+		if (any(!(dvc_probes %in% aux))) {
+			these <- !(dvc_probes %in% aux)
+			stop("The could not find all the required probes for device ",
+				 dvc, " in the phases input. Are you sure the phases file ",
+				 "contains phases for all the required probes? ",
+				 " Probes missing for device ", dvc, ": ",
+				 paste(dvc_probes[these], collapse = ", "))
+		}
+	})
+}
+

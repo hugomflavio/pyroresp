@@ -27,14 +27,16 @@ dataframe must contain the following columns:
 - id             : The ID of the animal
 - mass           : The mass of the animal, in grams
 - volume         : The non-corrected volume of the chamber + tubing
-- probe          : The device-channel combination for the_probe
+- probe          : The device-channel combination for the probe
 - first_cycle : The first cycle of valid data for that animal}
 
 \item{fix_phases}{Automatically correct any overlaps, gaps, or repeated
 phase names found in the file.}
 }
 \value{
-A list containing a phases dataframe and a pyro dataframe.
+A list containing a phases dataframe and a pyro list with the
+individual source data frames (in source_data), as well as a single,
+combined data frame organized by time (in compiled_data).
 }
 \description{
 Scans the target folder for a phases file and the raw pyroscience

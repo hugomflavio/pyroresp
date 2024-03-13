@@ -12,18 +12,25 @@
 #' 		- id     	    : The ID of the animal
 #' 		- mass   	    : The mass of the animal, in grams
 #' 		- volume 	    : The non-corrected volume of the chamber + tubing
-#' 		- probe  	    : The device-channel combination for the_probe
+#' 		- probe  	    : The device-channel combination for the probe
 #' 		- first_cycle : The first cycle of valid data for that animal
 #'
-#' @return A list containing a phases dataframe and a pyro dataframe.
+#' @return A list containing a phases dataframe and a pyro list with the
+#' 	individual source data frames (in source_data), as well as a single,
+#'  combined data frame organized by time (in compiled_data).
 #'
 #' @export
 #'
 load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 		phases_file = "CoolTerm", probe_info, fix_phases = TRUE) {
 
-	if (length(folder) == 0 || length(folder) > 1 || !dir.exists(folder))
+	if (length(folder) == 0 || !dir.exists(folder)) {
 		stop('Could not find target folder')
+	}
+
+	if (length(folder) > 1) {
+		stop('"folder" should be a string of length 1.')		
+	}
 
 	phases_file <- list.files(folder)[grepl(phases_file, list.files(folder))]
 
@@ -40,6 +47,13 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 	})
 
 	names(phases) <- stringr::str_extract(phases_file, '(?<=_)[^_]*(?=.txt)')
+
+	if (any(sapply(names(phases), length) > 4)) {
+		warning("Long device names detected in the phases input. Are you sure",
+				" you appended the device names correctly to the file name?",
+				" These are the current device names: ", 
+				paste(names(phases), collapse = ", "), ".")
+	}
 
 	output$phases <- phases
 	output$pyro <- load_pyro_data(folder, date_format = date_format, tz = tz)
@@ -88,8 +102,7 @@ load_pyro_data <- function(folder, date_format, tz) {
 	})))
 
 	recipient <- data.frame(date_time = seq(from = very_start,
-											to = very_end, by = 1),
-							phase = NA_character_)
+											to = very_end, by = 1))
 
 	for (i in source_data) {
 		new_piece <-  i[!duplicated(i$date_time), ]
@@ -148,7 +161,8 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
 
 	if (!missing(convert_o2_unit_to) && !(convert_o2_unit_to %in% all_units)) {
 		stop("the 'convert_o2_unit_to' argument is not an acceptable unit. ",
-			"Please choose one of the following: ", paste(all_units, collapse = ", "))
+			 "Please choose one of the following: ", 
+			 paste(all_units, collapse = ", "))
 	}
 
 	if (!missing(min_temp) & !missing(max_temp)) {
@@ -166,7 +180,7 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
 	
 	if (verbose) message("M: Melting resp data into computer-friendly format")
   	input$melted <- melt_resp(input = input$phased, 
-  														probe_info = input$probe_info)
+  							  probe_info = input$probe_info)
 
 	if (verbose) message("M: Removing flush and wait values.")
   	input$cleaned <- clean_meas(input = input$melted, wait = wait)
