@@ -102,7 +102,7 @@ assign_device_names <- function(folder, assign_list) {
 	capture <- lapply(files, function(i) {
 		the_file <- paste0(folder, '/ChannelData/', i)
 
-		x <- readLines(the_file)
+		x <- suppressWarnings(readLines(the_file))
 
 		r <- grep("^#Device", x)[1]
 
@@ -116,10 +116,10 @@ assign_device_names <- function(folder, assign_list) {
 			x[r] <- sub(device_name, assign_list[[device_letter]], x[r])
 			writeLines(x, the_file)
 			message("Renamed device ", device_name, " [", device_letter , "] to ",
-							assign_list[[device_letter]])
+							assign_list[[device_letter]], " in file '", i, "'.")
 		} else {
 			message("Could not find match for device ", device_name,
-							" [", device_letter , "] in assign_list.")
+							" [", device_letter , "] in assign_list (file '", i, "'').")
 		}
 	})
 }
