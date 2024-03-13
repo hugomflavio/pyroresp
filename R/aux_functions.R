@@ -75,12 +75,14 @@ conv_w_to_ml <- function(w, d = 1) {
 #' @inheritParams load_experiment
 #' @param assign_list A list of format device_letter = device_name for the
 #'  devices to rename based on their letter.
+#' @param confirmed Logical: Have you reviewed the changes and confirm you
+#'  want to apply them? Defaults to FALSE to perform a dry run.
 #' 
 #' @return Nothing. Used for side effects.
 #' 
 #' @export
 #' 
-assign_device_names <- function(folder, assign_list) {
+assign_device_names <- function(folder, assign_list, confirmed = FALSE) {
 	if (length(folder) == 0 || !dir.exists(folder)) {
 		stop('Could not find target folder')
 	}
@@ -114,12 +116,23 @@ assign_device_names <- function(folder, assign_list) {
 
 		if (device_letter %in% names(assign_list)) {
 			x[r] <- sub(device_name, assign_list[[device_letter]], x[r])
-			writeLines(x, the_file)
-			message("Renamed device ", device_name, " [", device_letter , "] to ",
+			if (confirmed) {
+				writeLines(x, the_file)
+				message("Renamed device ", device_name, " [", device_letter , "] to ",
+								assign_list[[device_letter]], " in file '", i, "'.")
+			} else {
+				message("Would have renamed device ", device_name, " [", device_letter , "] to ",
 							assign_list[[device_letter]], " in file '", i, "'.")
+			}
 		} else {
 			message("Could not find match for device ", device_name,
 							" [", device_letter , "] in assign_list (file '", i, "'').")
+		}
+
+		if (!confirmed) {
+			warnings("No changes were made. Review the messages above. ",
+							 "If you wish to apply those changes, run again with ",
+							 "confirmed = TRUE.")
 		}
 	})
 }

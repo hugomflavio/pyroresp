@@ -4,13 +4,16 @@
 \alias{assign_device_names}
 \title{Assign device names after completing experiment}
 \usage{
-assign_device_names(folder, assign_list)
+assign_device_names(folder, assign_list, confirmed = FALSE)
 }
 \arguments{
 \item{folder}{the path to the folder where the experiment data is stored}
 
 \item{assign_list}{A list of format device_letter = device_name for the
 devices to rename based on their letter.}
+
+\item{confirmed}{Logical: Have you reviewed the changes and confirm you
+want to apply them? Defaults to FALSE to perform a dry run.}
 }
 \value{
 Nothing. Used for side effects.
