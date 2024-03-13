@@ -118,21 +118,23 @@ assign_device_names <- function(folder, assign_list, confirmed = FALSE) {
 			x[r] <- sub(device_name, assign_list[[device_letter]], x[r])
 			if (confirmed) {
 				writeLines(x, the_file)
-				message("Renamed device ", device_name, " [", device_letter , "] to ",
-								assign_list[[device_letter]], " in file '", i, "'.")
+				message("Renamed device '", device_name, "' [", device_letter ,
+					"] to '",	assign_list[[device_letter]], "' in file '", i, "'.")
 			} else {
-				message("Would have renamed device ", device_name, " [", device_letter , "] to ",
-							assign_list[[device_letter]], " in file '", i, "'.")
+				message("Would have renamed device '", device_name, "' [",
+					device_letter , "] to '", assign_list[[device_letter]],
+					"' in file '", i, "'.")
 			}
 		} else {
-			message("Could not find match for device ", device_name,
-							" [", device_letter , "] in assign_list (file '", i, "'').")
+			message("Could not find match for device '", device_name,
+							"' [", device_letter , "] in assign_list (file '", i, "'').")
 		}
 
-		if (!confirmed) {
-			warnings("No changes were made. Review the messages above. ",
-							 "If you wish to apply those changes, run again with ",
-							 "confirmed = TRUE.")
-		}
 	})
+
+	if (!confirmed) {
+		warning("No changes were made. Review the messages above.\n",
+						"If you wish to apply those changes, run again with ",
+						"confirmed = TRUE.", call. = FALSE)
+	}
 }
