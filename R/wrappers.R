@@ -48,7 +48,7 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 
 	names(phases) <- stringr::str_extract(phases_file, '(?<=_)[^_]*(?=.txt)')
 
-	if (any(sapply(names(phases), length) > 4)) {
+	if (any(sapply(names(phases), nchar) > 4)) {
 		warning("Long device names detected in the phases input. Are you sure",
 				" you appended the device names correctly to the file name?",
 				" These are the current device names: ", 

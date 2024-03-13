@@ -356,11 +356,8 @@ merge_pyro_phases <- function(input) {
 
 	new_col_order <- 1
 
-	pyro_names <- colnames(pyrodata)
-	phase_names <- names(phases)
-
 	check_devices_match(colnames(pyrodata), names(phases))
-	check_probes_match(colnames(pyrodata), names(phases))
+	check_probes_match(colnames(pyrodata), phases)
 
 	tmp <- lapply(1:length(phases), function(dvc) {
 		lapply(1:length(phases[[dvc]]), function(prb) {
@@ -456,12 +453,12 @@ check_devices_match <- function(pyro_names, phase_names) {
 	pyro_names <- pyro_names[!grepl("date_time", pyro_names)]
 	pyro_names <- stringr::str_extract(pyro_names, "(?<=_)[^$]*$")
 	device_names <- unique(sub("[0-9]$", "", pyro_names))
-	if( any(!(phase_names %in% device_names))) {
-		these <- !(phase_names %in% device_names)
+	if( any(!(device_names %in% phase_names))) {
+		these <- !(device_names %in% phase_names)
 		stop("The could not find all the required device names in the ",
 			 "phases list. Are you sure you matched the names correctly? ",
 			 "Devices missing in phases input: ",
-			 paste(phase_names[these], collapse = ", "))
+			 paste(device_names[these], collapse = ", "))
 	}
 }
 
