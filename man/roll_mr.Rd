@@ -4,14 +4,14 @@
 \alias{roll_mr}
 \title{Break down MR from a single cycle}
 \usage{
-roll_mr(input, probe, phase, smoothing, d = 1)
+roll_mr(input, probe, cycle, smoothing, d = 1)
 }
 \arguments{
 \item{input}{The output of \code{\link{process_mr}}}
 
 \item{probe}{Which probe to select}
 
-\item{phase}{which phase to select}
+\item{cycle}{which cycle to select}
 
 \item{smoothing}{How many points should be gathered for
 each calculation of the rolling MR}

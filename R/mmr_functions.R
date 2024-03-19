@@ -21,36 +21,3 @@ extract_mmr <- function(mr){
 
   return(mmr)
 }
-
-
-# #' Remove part of the mr trace
-# #' 
-# #' Useful when there are artifacts along the cycle that could disrupt fractioned
-# #'  mr calculation. Refinds max mmr after removing the desired segment.
-# #' 
-# #' @param rolling_mmr the output of compile_rolling_mmr
-# #' @param probe which probe to act upon
-# #' @param from second from which to start exclusion
-# #' @param to second where to end exclusion
-# #' 
-# #' @export
-# #' 
-# exclude_rolling_mmr_segment <- function(rolling_mmr, probe, from, to) {
-#   stop("Don't run this until the code has been checked")
-#   to_exclude <- rolling_mmr$detailed_mmr$probe == probe & 
-#                 rolling_mmr$detailed_mmr$phase_time >= from & 
-#                 rolling_mmr$detailed_mmr$phase_time <= to
-
-#   rolling_mmr$detailed_mmr[to_exclude, 5:9] <- NA
-
-#   aux <- rolling_mmr$detailed_mmr[rolling_mmr$detailed_mmr$probe == probe, ]
-#   index <- which.max(aux$mr_cor)
-  
-#   prb <- rolling_mmr$max_mmr$probe == probe
-#   rolling_mmr$max_mmr[prb, ] <- to_check[index, colnames(rolling_mmr$max_mmr)]
-
-#   return(rolling_mmr)
-# }
-
-
-

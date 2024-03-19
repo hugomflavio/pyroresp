@@ -13,7 +13,7 @@
 #' 		- mass   	    : The mass of the animal, in grams
 #' 		- volume 	    : The non-corrected volume of the chamber + tubing
 #' 		- probe  	    : The device-channel combination for the probe
-#' 		- first_cycle : The first cycle of valid data for that animal
+#' 		- first_cycle 	: The first cycle of valid data for that animal
 #'
 #' @return A list containing a phases dataframe and a pyro list with the
 #' 	individual source data frames (in source_data), as well as a single,
@@ -124,6 +124,9 @@ load_pyro_data <- function(folder, date_format, tz) {
 #' @param input The output of \code{\link{load_experiment}}
 #' @param wait The number of seconds to discard as wait phase
 #' @param convert_o2_unit_to The o2 unit desired for the final results
+#' @param patch_NAs Logical. Should NA values found in the raw data be patched?
+#' 	Defaults to TRUE.
+#' @inheritParams patch_NAs
 #' @param min_temp,max_temp 
 #' 	For temperature ramp experiments. The minimum OR maximum temperatures
 #' 	that must be reached before data is considered valid. Discards all phases
@@ -136,9 +139,6 @@ load_pyro_data <- function(folder, date_format, tz) {
 #' @param from_cycle,to_cycle
 #' 	Trim the experiment to a specific group of cycles. You may use one or both
 #'  of these arguments at the same time. Input must be numeric.
-#' @param patch_NAs Logical. Should NA values found in the raw data be patched?
-#' 	Defaults to TRUE.
-#' @inheritParams patch_NAs
 #' @param verbose Logical. Should steps being taken be detailed with messages.
 #' 	Defaults to TRUE.
 #' 
@@ -148,8 +148,8 @@ load_pyro_data <- function(folder, date_format, tz) {
 #' @export 
 #'
 process_experiment <- function(input, wait, convert_o2_unit_to,
-		min_temp, max_temp, start_time, stop_time, from_cycle, to_cycle, 
 		patch_NAs = TRUE, patch_method = c("linear", "before", "after"),
+		min_temp, max_temp, start_time, stop_time, from_cycle, to_cycle, 
 		verbose = TRUE) {
 
 	patch_method <- match.arg(patch_method)
@@ -185,56 +185,47 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
 	if (verbose) message("M: Removing flush and wait values.")
   	input$cleaned <- clean_meas(input = input$melted, wait = wait)
 
-	if (verbose) message("M: Converting o2 units.")
-
-	pressure_aux <- input$cleaned$pressure
-	units(pressure_aux) <- "mbar"
-
-	temp_aux <- input$cleaned$temp
-	units(temp_aux) <- intToUtf8(c(176, 67))
+	if (verbose) message("M: Calculating air saturation")
 
 	input$cleaned$airsat  <- 
 		respirometry::conv_o2(
 			o2 = as.numeric(input$cleaned$o2),
 			from = sub("/", "_per_", as.character(units(input$cleaned$o2))),
 			to = "percent_a.s.", 
-			temp = as.numeric(temp_aux), 
-			sal = 0, 
-			atm_pres = as.numeric(pressure_aux)
+			temp = as.numeric(input$cleaned$temp), 
+			sal = as.numeric(input$cleaned$sal), 
+			atm_pres = as.numeric(input$cleaned$pressure)
 		)
 	units(input$cleaned$airsat) <- "percent"
 
 	if (!missing(convert_o2_unit_to)) {
 		
-		pressure_aux <- input$melted$pressure
-		units(pressure_aux) <- "mbar"
-		temp_aux <- input$melted$temp
-		units(temp_aux) <- intToUtf8(c(176, 67))
+		original_o2 <- sub("/", "_per_", as.character(units(input$melted$o2)))
 
+		if (verbose) {
+			message("M: Converting oxygen unit from ", original_o2, 
+					" to ", convert_o2_unit_to, ".")	
+		}
+		
 		input$melted$o2 <-
 			respirometry::conv_o2(
 				o2 = as.numeric(input$melted$o2),
-				from = sub("/", "_per_", as.character(units(input$melted$o2))),
+				from = original_o2,
 				to = convert_o2_unit_to, 
-				temp = as.numeric(temp_aux), 
-				sal = 0, 
-				atm_pres = as.numeric(pressure_aux)
+				temp = as.numeric(input$melted$temp), 
+				sal = as.numeric(input$melted$sal), 
+				atm_pres = as.numeric(input$melted$pressure)
 			)
 		units(input$melted$o2) <- gsub("_per_", "/", convert_o2_unit_to)
-
-		pressure_aux <- input$cleaned$pressure
-		units(pressure_aux) <- "mbar"
-		temp_aux <- input$cleaned$temp
-		units(temp_aux) <- intToUtf8(c(176, 67))
 
 		input$cleaned$o2  <- 
 			respirometry::conv_o2(
 				o2 = as.numeric(input$cleaned$o2),
 				from = sub("/", "_per_", as.character(units(input$cleaned$o2))),
 				to = convert_o2_unit_to, 
-				temp = as.numeric(temp_aux), 
-				sal = 0, 
-				atm_pres = as.numeric(pressure_aux)
+				temp = as.numeric(input$cleaned$temp), 
+				sal = as.numeric(input$cleaned$sal), 
+				atm_pres = as.numeric(input$cleaned$pressure)
 			)
 		units(input$cleaned$o2) <- gsub("_per_", "/", convert_o2_unit_to)
 	}
@@ -266,7 +257,8 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
 		}
 	}
 	if (!is.null(cutoff)) {
-		first_true <- which(input$cleaned$phase == input$cleaned$phase[cutoff])[1]
+		the_matches <- which(input$cleaned$phase == input$cleaned$phase[cutoff])
+		first_true <- head(the_matches, 1)
 		time_break <- input$cleaned$date_time[first_true]
 		input$cleaned <- input$cleaned[input$cleaned$date_time >= time_break, ]
 	}
@@ -275,14 +267,16 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
 		if (verbose) {
 			message(paste0("M: Discarding phases before ", start_time, "."))
 		}
-		cutoff <- head(which(input$cleaned$date_time >= as.POSIXct(start_time)), 1)
+		the_matches <- which(input$cleaned$date_time >= as.POSIXct(start_time))
+		cutoff <- head(the_matches, 1)
 		if (length(cutoff) == 0) {
 			stop ("Data ends before ", start_time, ".")
 		} else {
 			first_phase <- input$cleaned$phase[cutoff]
-			first_true <- head(which(input$cleaned$phase == first_phase), 1)
-			time_break <- input$cleaned$date_time[first_true]
-			input$cleaned <- input$cleaned[input$cleaned$date_time >= time_break, ]
+			the_matches <- which(input$cleaned$phase == first_phase)
+			first_true <- head(the_matches, 1)
+			break_ <- input$cleaned$date_time[first_true]
+			input$cleaned <- input$cleaned[input$cleaned$date_time >= break_, ]
 		}
 	}
 
@@ -290,20 +284,23 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
 		if (verbose) {
 			message(paste0("M: Discarding phases after ", stop_time, "."))
 		}
-		cutoff <- tail(which(input$cleaned$date_time <= as.POSIXct(stop_time)), 1)
+		the_matches <- which(input$cleaned$date_time <= as.POSIXct(stop_time))
+		cutoff <- tail(the_matches, 1)
 		if (length(cutoff) == 0) {
 			stop ("Data starts after ", stop_time, ".")
 		} else {
 			last_phase <- input$cleaned$phase[cutoff]
-			last_true <- tail(which(input$cleaned$phase == last_phase), 1)
-			time_break <- input$cleaned$date_time[last_true]
-			input$cleaned <- input$cleaned[input$cleaned$date_time <= time_break, ]
+			the_matches <- which(input$cleaned$phase == last_phase)
+			last_true <- tail(the_matches, 1)
+			break_ <- input$cleaned$date_time[last_true]
+			input$cleaned <- input$cleaned[input$cleaned$date_time <= break_, ]
 		}
 	}
 
 	if (!missing(from_cycle)) {
 		if (verbose) {
-			message(paste0("M: Discarding cycles prior to cycle ", from_cycle, "."))
+			message(paste0("M: Discarding cycles prior to cycle ",
+						   from_cycle, "."))
 		}
 		input$cleaned <- input$cleaned[input$cleaned$cycle > from_cycle, ]
 	}

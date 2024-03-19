@@ -8,14 +8,14 @@ process_experiment(
   input,
   wait,
   convert_o2_unit_to,
+  patch_NAs = TRUE,
+  patch_method = c("linear", "before", "after"),
   min_temp,
   max_temp,
   start_time,
   stop_time,
   from_cycle,
   to_cycle,
-  patch_NAs = TRUE,
-  patch_method = c("linear", "before", "after"),
   verbose = TRUE
 )
 }
@@ -25,6 +25,17 @@ process_experiment(
 \item{wait}{The number of seconds to discard as wait phase}
 
 \item{convert_o2_unit_to}{The o2 unit desired for the final results}
+
+\item{patch_NAs}{Logical. Should NA values found in the raw data be patched?
+Defaults to TRUE.}
+
+\item{patch_method}{One of:
+'linear' to capture the nearest before and after non-NA values and make a
+linear interpolation.
+'before' to find the nearest non-NA value before the NA and use it to fill
+the gap.
+'after'  to do the same as above but with the nearest value coming after
+the NA.}
 
 \item{min_temp, max_temp}{For temperature ramp experiments. The minimum OR maximum temperatures
 that must be reached before data is considered valid. Discards all phases
@@ -37,17 +48,6 @@ YYYY-MM-DD HH:MM:SS format.}
 
 \item{from_cycle, to_cycle}{Trim the experiment to a specific group of cycles. You may use one or both
 of these arguments at the same time. Input must be numeric.}
-
-\item{patch_NAs}{Logical. Should NA values found in the raw data be patched?
-Defaults to TRUE.}
-
-\item{patch_method}{One of:
-'linear' to capture the nearest before and after non-NA values and make a
-linear interpolation.
-'before' to find the nearest non-NA value before the NA and use it to fill
-the gap.
-'after'  to do the same as above but with the nearest value coming after
-the NA.}
 
 \item{verbose}{Logical. Should steps being taken be detailed with messages.
 Defaults to TRUE.}

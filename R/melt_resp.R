@@ -36,6 +36,14 @@ melt_resp <- function(input, probe_info) {
   temp_aux$variable <- NULL
   temp_aux$date_time <- NULL
 
+  sal_aux <- reshape2::melt(input, 
+    id.vars = "date_time",
+    measure.vars = colnames(input)[grepl("sal_", colnames(input))],
+    value.name = "sal"
+  )
+  sal_aux$variable <- NULL
+  sal_aux$date_time <- NULL
+
   phase_aux <- reshape2::melt(input, 
     id.vars = "date_time",
     measure.vars = colnames(input)[grepl("phase_", colnames(input))],
@@ -44,7 +52,7 @@ melt_resp <- function(input, probe_info) {
   phase_aux$variable <- NULL
   phase_aux$date_time <- NULL
 
-  pre_output <- cbind(ox_aux, pressure_aux, temp_aux, phase_aux)
+  pre_output <- cbind(ox_aux, pressure_aux, temp_aux, sal_aux, phase_aux)
 
   if (any(grepl("ph_", colnames(input))))
     pre_output$ph <- as.vector(t(input[, grepl("ph_", colnames(input))]))

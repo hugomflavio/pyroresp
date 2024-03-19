@@ -416,14 +416,21 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 #' @param input An experiment list with calculated SMR.
 #' 	The output of \code{\link{process_experiment}} or
 #' 	\code{\link{calc_smr}}.
+#' @param probes A string of which probes to plot
 #' 
 #' @return a ggplot object
 #' 
 #' @export
 #' 
-plot_smr <- function(input) {
+plot_smr <- function(input, probes) {
 	# ggplot variables
 	mr_cor <- value <- Method <- NULL
+
+	if (!missing(probes)) {
+		probes <- check_arg_in_data(probes, input$smr$probe, "probes")
+		input$smr <- input$smr[input$smr$probe %in% probes, ]
+		input$mr <- input$mr[input$mr$probe %in% probes, ]
+	}
 
 	mr_cols <- grepl("mr_cor", colnames(input$smr))
 	aux <- reshape2::melt(input$smr, 
@@ -455,12 +462,13 @@ plot_smr <- function(input) {
 #' 
 #' @param input An experiment list with calculated rolling MR values.
 #' 	The output of \code{\link{roll_mr}}.
+#' @inheritParams plot_meas
 #' 
 #' @return a ggplot object
 #' 
 #' @export
 #' 
-plot_rolling_mr <- function(input) {
+plot_rolling_mr <- function(input, probes, cycles) {
 	# ggplot variables
 	phase_time <- date_time <- mr_cor <- r2 <- NULL
 
@@ -471,25 +479,39 @@ plot_rolling_mr <- function(input) {
 		stop("Could not find rolling mr values in input")
 	}
 
+	if (!missing(probes)) {
+		probes <- check_arg_in_data(probes, mr$probe,
+									"probes", verbose = TRUE)
+		mr <- mr[mr$probe %in% probes, ]
+		max_mr <- max_mr[max_mr$probe %in% probes, ]
+	}
+
+	if (!missing(cycles)) {
+		cycles <- check_arg_in_data(cycles, mr$cycle,
+									"cycles", verbose = TRUE)
+		mr <- mr[mr$cycle %in% cycles, ]
+		max_mr <- max_mr[max_mr$cycle %in% cycles, ]
+	}
+
 	# remove units
 	o2_unit <- units(mr$mr_cor)
 	mr$mr_cor <- as.numeric(mr$mr_cor)
 	max_mr$mr_cor <- as.numeric(max_mr$mr_cor)
 
 	# make facets
-	aux <- unique(mr[, c("id", "probe", "phase")])
-	aux <- aux[order(aux$phase), ]
+	aux <- unique(mr[, c("id", "probe", "cycle")])
+	aux <- aux[order(aux$cycle), ]
 	aux <- aux[match(aux$probe, input$probe_info$probe), ]
 
 	ipp_levels <- paste0(aux$id, " (", 
 						 aux$probe, ") - ", 
-						 aux$phase)
+						 aux$cycle)
 
-	mr$idprobephase <- paste0(mr$id, " (", mr$probe, ") - ", mr$phase)
-	mr$idprobephase <- factor(mr$idprobephase, levels = ipp_levels)
-	max_mr$idprobephase <- paste0(max_mr$id,
-								  " (", max_mr$probe, ") - ", max_mr$phase)
-	max_mr$idprobephase <- factor(max_mr$idprobephase, levels = ipp_levels)
+	mr$idprobecycle <- paste0(mr$id, " (", mr$probe, ") - ", mr$cycle)
+	mr$idprobecycle <- factor(mr$idprobecycle, levels = ipp_levels)
+	max_mr$idprobecycle <- paste0(max_mr$id,
+								  " (", max_mr$probe, ") - ", max_mr$cycle)
+	max_mr$idprobecycle <- factor(max_mr$idprobecycle, levels = ipp_levels)
 
 	
 	p <- ggplot2::ggplot(data = mr, ggplot2::aes(x = phase_time, y = mr_cor))
@@ -498,10 +520,10 @@ plot_rolling_mr <- function(input) {
 	p <- p + ggplot2::theme_bw()
 
 
-	rer_mean <- as.numeric(mean(mr$mr_cor))
+	rer_mean <- as.numeric(mean(mr$mr_cor, na.rm = TRUE))
 	r2_mean <- 0.5
 	mean_dif <- r2_mean - rer_mean
-	aux <- as.numeric(range(mr$mr_cor))
+	aux <- as.numeric(range(mr$mr_cor, na.rm = TRUE))
 	rer_range <- aux[2] - aux[1]
 	r2_range <- 1
 
@@ -528,7 +550,7 @@ plot_rolling_mr <- function(input) {
 
 	p <- p + ggplot2::labs(y = units::make_unit_label("M[O[2]]", o2_unit),
 						   x = "Time within phase")
-	p <- p + ggplot2::facet_wrap(idprobephase ~ ., ncol = 1)
+	p <- p + ggplot2::facet_wrap(idprobecycle ~ ., ncol = 1)
 	p
 }
 

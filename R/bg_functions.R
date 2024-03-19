@@ -226,11 +226,6 @@ extrapolate_bg <- function(input, to) {
 #'          background from the experiment oxygen consumption readings, using
 #'          the phase number as an indicator of the position in the linear
 #'          progression.
-#' \item  "exponential" - calculates an exponential progression between pre- and
-#'          post-experiment background readings and subtracts the respective
-#'          background from the experiment oxygen consumption readings, using
-#'          the phase number as an indicator of the position in the linear
-#'          progression.
 #' \item  "parallel" - subtracts the oxygen consumption readings of one probe
 #'          (listed using ref_probe) from the remaining probes, matching both
 #'          by cycle.
@@ -251,7 +246,7 @@ extrapolate_bg <- function(input, to) {
 #'
 subtract_bg <- function (input, pre, post,
                         method = c("pre", "post", "average",
-                                   "linear", "exponential", "parallel", "none"),
+                                   "linear", "parallel", "none"),
                         ref_probe){
 
   method <- match.arg(method)
@@ -325,12 +320,6 @@ subtract_bg <- function (input, pre, post,
 
   if (method == "linear") {
     my_bg <- calc_linear_bg(input = input, pre = pre, post = post)
-    input$bg$pre <- pre
-    input$bg$post <- post
-  }
-
-  if (method == "exponential") {
-    stop("exponential has not been updated yet")
     input$bg$pre <- pre
     input$bg$post <- post
   }
@@ -466,4 +455,3 @@ calc_linear_bg <- function(input, pre, post) {
   my_bg_df <- do.call(rbind, my_bg_simplified)
   return(my_bg_df)
 }
-

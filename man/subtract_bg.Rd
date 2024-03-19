@@ -8,7 +8,7 @@ subtract_bg(
   input,
   pre,
   post,
-  method = c("pre", "post", "average", "linear", "exponential", "parallel", "none"),
+  method = c("pre", "post", "average", "linear", "parallel", "none"),
   ref_probe
 )
 }
@@ -31,11 +31,6 @@ from the experiment oxygen consumption readings.
 \item  "average" - averages the pre- and post-experiment background readings
 and subtracts them from the experiment oxygen consumption readings.
 \item  "linear" - calculates a linear progression between pre- and
-post-experiment background readings and subtracts the respective
-background from the experiment oxygen consumption readings, using
-the phase number as an indicator of the position in the linear
-progression.
-\item  "exponential" - calculates an exponential progression between pre- and
 post-experiment background readings and subtracts the respective
 background from the experiment oxygen consumption readings, using
 the phase number as an indicator of the position in the linear

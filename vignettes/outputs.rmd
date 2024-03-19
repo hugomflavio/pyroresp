@@ -9,6 +9,8 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+This vignette is not in use yet. Please refer to [workflow.html](workflow.html) instead.
+
 ## Structuring your input data
 
 ### load_experiment()

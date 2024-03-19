@@ -4,12 +4,14 @@
 \alias{plot_smr}
 \title{Plot the standard metabolic rates}
 \usage{
-plot_smr(input)
+plot_smr(input, probes)
 }
 \arguments{
 \item{input}{An experiment list with calculated SMR.
 The output of \code{\link{process_experiment}} or
 \code{\link{calc_smr}}.}
+
+\item{probes}{A string of which probes to plot}
 }
 \value{
 a ggplot object

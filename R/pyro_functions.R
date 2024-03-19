@@ -1,3 +1,135 @@
+#' Load a single raw channel file
+#'
+#' @param file the path to a raw channel data file.
+#' @param date_format the format used in the raw date values (locale dependent)
+#' @param skip Number of data rows to skip. Defaults to 0. Note: This is not the
+#' 	number of lines to skip from the top of the file. It is the number of lines
+#' 	to skip once the actual raw data starts.
+#' @param tz The time zone of the data. Defaults to the system time zone.
+#'
+#' @return A data frame containing the inported data
+#'
+#' @export
+#'
+read_pyro_raw_file <- function(file, date_format,
+		skip = 0, tz = Sys.timezone()) {
+
+	if (length(file) == 0 || !file.exists(file)) {
+		stop("Could not find target file.", call. = FALSE)
+	}
+
+	# identify device and channel name
+	file_header <- readLines(file, n = 15)
+	device_line <- file_header[grepl("^#Device", file_header)]
+	device <- stringr::str_extract(device_line,'(?<=Device: )[^\\[]*')
+	device <- sub(" $", "", device)
+	ch <- stringr::str_extract(file,'(?<=Ch.)[0-9]')
+
+
+	if (grepl("Oxygen\\.txt$", file) || grepl("pH\\.txt$", file)) {
+
+		base_skip <- if (grepl("Oxygen\\.txt$", file)) 24 else 20
+
+		# grab first row to compile col names
+		table_header <- utils::read.table(file, sep = "\t", skip = base_skip,
+								 header = FALSE, strip.white = TRUE, nrows = 1)
+
+		# grab rest of rows with the actual data
+		output <- utils::read.table(file, sep = "\t",
+									skip = base_skip + 1 + skip,
+									header = FALSE, strip.white = TRUE)
+
+		# grab first and last words of the table headers.
+		a <- gsub(" .*$", "", table_header[1,])
+		b <- gsub("^.* ", "", table_header[1,])
+		b <- gsub(']', '', b)
+
+		# combine first and last words as new column names
+		colnames(output) <- tolower(paste0(a, '_', b))
+
+		# Ensure there are no duplicated colum names (data.table shenanigans)
+		output <- output[, !duplicated(colnames(output))]
+
+		# extract salinity
+		settings_line <- grep("--- Settings & Calibration", file_header)
+		sal_value <- stringr::str_extract(file_header[settings_line + 2],
+										  "(?<=\t)[^\t]*$")
+
+		output$salinity <- as.numeric(sal_value)
+	}
+
+	if (grepl("TempPT100Port\\.txt$", file)) {
+		output <- utils::read.table(file, sep = "\t", skip = 12 + skip,
+									header = FALSE, strip.white = TRUE)
+
+		colnames(output) <- c('date_main', 'time_main', 'ds', 'temp', 'status')
+	}
+
+	# calculate POSIX timestamp
+	date_time_aux <- paste(output$date_main, output$time_main)
+	date_format <- paste(date_format, "%H:%M:%S")
+	output$date_time <- as.POSIXct(date_time_aux, format = date_format, tz = tz)
+
+	# reorganize columns and assign units
+	if (grepl("Oxygen\\.txt$", file)) {
+		output <- output[, c('date_time', 'sample_compt',
+							 'pressure_compp', 'salinity', 'oxygen_main')]
+		# units
+		table_header_string <- paste(table_header, collapse = " ")
+		tp_unit <- stringr::str_extract(table_header_string, 
+										"(?<=Sample Temp. \\()[^\\)]*")
+		units(output$sample_compt) <- tp_unit
+
+		pr_unit <- stringr::str_extract(table_header_string, 
+										"(?<=Pressure \\()[^\\)]*")
+		units(output$pressure_compp) <- pr_unit
+
+		# notice that the salinity unit is grabbed from a different place.
+		sal_unit <- stringr::str_extract(file_header[settings_line + 1],
+										 "(?<=Salinity \\()[^\\)]*")
+		units(output$salinity) <- sal_unit
+
+		o2_unit <- stringr::str_extract(table_header_string, 
+										"(?<=Oxygen \\()[^\\)]*")
+		units(output$oxygen_main) <- o2_unit
+
+		colnames(output)[2:5] <- paste0(c('temp_', 'pressure_', 'sal_', 'ox_'),
+										device, ch)
+		file_type <- "oxygen"
+	}
+
+	if (grepl("pH\\.txt$", file)) {
+		output <- output[, c('date_time', 'ph_main')]
+
+		# units
+		units(output$ph_main) <- "pH"
+
+		colnames(output)[2] <- paste0(c('ph_'),	device, ch)
+		file_type <- "ph"
+	}
+
+	if (grepl("TempPT100Port\\.txt$", file)) {
+		output <- output[, c('date_time', 'temp')]
+
+		# units
+		table_header_string <- paste(table_header, collapse = " ")
+		tp_unit <- stringr::str_extract(table_header_string, 
+										"(?<=Sample Temp. \\()[^\\)]*")
+		units(output$temp_main) <- tp_unit
+
+		colnames(output)[2] <- paste0(c('temp_'), device, ch)
+
+		file_type <- "temp"
+	}
+
+	attributes(output)$source_file <- file
+	attributes(output)$device <- device
+	attributes(output)$ch <- ch
+	attributes(output)$file_type <- file_type
+
+	return(output)
+}
+
 #' Fill in missing datapoints using the nearest available data.
 #'
 #' At high sampling rates, data points can occasionally be lost, causing odd
@@ -34,209 +166,119 @@ patch_NAs <- function(input, patch_method = c('linear', 'before', 'after'),
 	capture <- lapply(columns_to_check, function(i) {
 		# start by finding the gaps in the column and storing them in a table
 		aux <- cumsum(rle_list[[i]]$lengths)
-		breaks <- data.frame(Value = rle_list[[i]]$values,
-							 Start = c(1, aux[-length(aux)] + 1),
-							 Stop = aux)
-
+		breaks <- data.frame(value = rle_list[[i]]$values,
+							 start = c(1, aux[-length(aux)] + 1),
+							 stop = aux)
+		
 		# if there are any breaks, start working on them
-		if (any(breaks$Value)) {
-			nas <- breaks[breaks$Value, ]
-			# for every break found, apply the correction
-			for (j in 1:nrow(nas)) {
-				if (patch_method == 'linear') {
-					# failsafe against NAs at the start when using linear
-					if (nas$Start[j] == 1) {
-						if (verbose) {
-							warning("NAs found at the start of a column.",
-								" Using method = 'after' for this instance.",
-								immediate. = TRUE, call. = FALSE)
-						}
-						missing_interval <- nas$Start[j]:nas$Stop[j]
-						replacement <- input[nas$Stop[j] + 1, i]
-					}
-					# failsafe against NAs at the end when using linear
-					if (nas$Stop[j] == nrow(input)) {
-						if (verbose) {
-							warning("NAs found at the end of a column.",
-								" Using method = 'before' for this instance.",
-								immediate. = TRUE, call. = FALSE)
-						}
-						missing_interval <- nas$Start[j]:nas$Stop[j]
-						replacement <- input[nas$Start[j] - 1, i]
-					}
-					if (nas$Start[j] != 1 && nas$Stop[j] != nrow(input)) {
-						missing_interval <- (nas$Start[j] - 1):(nas$Stop[j] + 1)
-						replacement <- seq(
-							from = input[nas$Start[j] - 1, i],
-							to = input[nas$Stop[j] + 1, i],
-							length.out = nas$Stop[j] - nas$Start[j] + 3
-						)
-						# Explanation for the +3 in the length.out above:
-						# +1 to repeat the last known value before the break
-						# +1 to replace the first known value after the
-						# break.
-						# +1 to compensate for the one that is lost when
-						# doing Stop - Start. E.g. row 3 - row 2 = 1, but both
-						# row 3 and 2 are NAs
-					}
-				}
-				if (patch_method == 'before') {
-					if (nas$Start[j] == 1) {
-						if (verbose) {
-							warning("NAs found at the start of a column.",
-								" Using method = 'after' for this instance.",
-								immediate. = TRUE, call. = FALSE)
-						}
-						missing_interval <- nas$Start[j]:nas$Stop[j]
-						replacement <- input[nas$Stop[j] + 1, i]
-					}
-					else {
-						missing_interval <- nas$Start[j]:nas$Stop[j]
-						replacement <- input[nas$Start[j] - 1, i]
-					}
-				}
-				if (patch_method == 'after') {
-					if (nas$Stop[j] == nrow(input)) {
-						if (verbose) {
-							warning("NAs found at the end of a column.",
-								" Using method = 'before' for this instance.",
-								immediate. = TRUE, call. = FALSE)
-						}
-						missing_interval <- nas$Start[j]:nas$Stop[j]
-						replacement <- input[nas$Start[j] - 1, i]
-					}
-					else {
-						missing_interval <- nas$Start[j]:nas$Stop[j]
-						replacement <- input[nas$Stop[j] + 1, i]
-					}				
-				}
-				input[missing_interval, i] <<- replacement
+		if (any(breaks$value)) {
+			nas <- breaks[breaks$value, ]
+
+			# check for wide gaps. Complain if needed
+			nas$n <- nas$stop - nas$start + 1
+			if (any(nas$n > 5)) {
+				ngaps <- sum(nas$n > 5)
+				warning("Found ",
+						ifelse(ngaps == 1, 
+							   " a wide gap", 
+							   paste(ngaps, "wide gaps")),
+						" of NAs in column ", i, " (n > 5).",
+						" Won't auto-fix wide gaps. Check data manually.",
+						immediate. = TRUE, call. = TRUE)
+
+				nas <- nas[nas$n <= 5, ]
+			}
+
+			if (nrow(nas) > 0) {
+				input <<- aux_fun_process_NAs(nas = nas, input = input,
+											  patch_method = patch_method,
+											  col = i, verbose = verbose)
 			}
 		}
 	})
 	return(input)
 }
 
-
-#' Load a single raw channel file
-#'
-#' @param file the path to a raw channel data file.
-#' @param date_format the format used in the raw date values (locale dependent)
-#' @param skip Number of data rows to skip. Defaults to 0. Note: This is not the
-#' 	number of lines to skip from the top of the file. It is the number of lines
-#' 	to skip once the actual raw data starts.
-#' @param tz The time zone of the data. Defaults to the system time zone.
-#'
-#' @return A data frame containing the inported data
-#'
-#' @export
-#'
-read_pyro_raw_file <- function(file, date_format,
-		skip = 0, tz = Sys.timezone()) {
-
-	if (length(file) == 0 || !file.exists(file)) {
-		stop("Could not find target file.", call. = FALSE)
+#' auxiliary function of patch_NAs
+#' 
+#' Internal. Performs the actual patching for one column at a time.
+#' 
+#' @param nas A table with the start and stop rows of the NA intervals
+#' @param col the column being patched
+#' @inheritParams patch_NAs
+#' 
+#' @keywords internal
+#' 
+aux_fun_process_NAs <- function(nas, col, input, patch_method, verbose) {
+	# for every break found, apply the correction
+	for (j in 1:nrow(nas)) {
+		if (patch_method == 'linear') {
+			# failsafe against NAs at the start when using linear
+			if (nas$start[j] == 1) {
+				if (verbose) {
+					message("NAs found at the start of column ", col, ".",
+						" Using method = 'after' for this instance.")
+				}
+				missing_interval <- nas$start[j]:nas$stop[j]
+				replacement <- input[nas$stop[j] + 1, col]
+			}
+			# failsafe against NAs at the end when using linear
+			if (nas$stop[j] == nrow(input)) {
+				if (verbose) {
+					message("NAs found at the end of column ", col, ".",
+						" Using method = 'before' for this instance.")
+				}
+				missing_interval <- nas$start[j]:nas$stop[j]
+				replacement <- input[nas$start[j] - 1, col]
+			}
+			if (nas$start[j] != 1 && nas$stop[j] != nrow(input)) {
+				missing_interval <- (nas$start[j] - 1):(nas$stop[j] + 1)
+				replacement <- seq(
+					from = input[nas$start[j] - 1, col],
+					to = input[nas$stop[j] + 1, col],
+					length.out = nas$stop[j] - nas$start[j] + 3
+				)
+				# Explanation for the +3 in the length.out above:
+				# +1 to repeat the last known value before the break
+				# +1 to replace the first known value after the
+				# break.
+				# +1 to compensate for the one that is lost when
+				# doing Stop - Start. E.g. row 3 - row 2 = 1, but both
+				# row 3 and 2 are NAs
+			}
+		}
+		if (patch_method == 'before') {
+			if (nas$start[j] == 1) {
+				if (verbose) {
+					message("NAs found at the start of of column ", col, ".",
+						" Using method = 'after' for this instance.")
+				}
+				missing_interval <- nas$start[j]:nas$stop[j]
+				replacement <- input[nas$stop[j] + 1, col]
+			}
+			else {
+				missing_interval <- nas$start[j]:nas$stop[j]
+				replacement <- input[nas$start[j] - 1, col]
+			}
+		}
+		if (patch_method == 'after') {
+			if (nas$stop[j] == nrow(input)) {
+				if (verbose) {
+					message("NAs found at the end of of column ", col, ".",
+						" Using method = 'before' for this instance.")
+				}
+				missing_interval <- nas$start[j]:nas$stop[j]
+				replacement <- input[nas$start[j] - 1, col]
+			}
+			else {
+				missing_interval <- nas$start[j]:nas$stop[j]
+				replacement <- input[nas$stop[j] + 1, col]
+			}				
+		}
+		input[missing_interval, col] <- replacement
 	}
-
-	# identify device and channel name
-	aux <- readLines(file, n = 10)
-	aux <- aux[grepl("^#Device", aux)]
-	device <- stringr::str_extract(aux,'(?<=Device: )[^\\[]*')
-	device <- sub(" $", "", device)
-	ch <- stringr::str_extract(file,'(?<=Ch.)[0-9]')
-
-	if (grepl("Oxygen\\.txt$", file) || grepl("pH\\.txt$", file)) {
-
-		base_skip <- if (grepl("Oxygen\\.txt$", file)) 24 else 20
-
-		# grab first row to compile col names
-		file_header <- utils::read.table(file, sep = "\t", skip = base_skip,
-								 header = FALSE, strip.white = TRUE, nrows = 1)
-
-		# grab rest of rows with the actual data
-		output <- utils::read.table(file, sep = "\t",
-									skip = base_skip + 1 + skip,
-									header = FALSE, strip.white = TRUE)
-
-		# grab first and last words of the headers.
-		a <- gsub(" .*$", "", file_header[1,])
-		b <- gsub("^.* ", "", file_header[1,])
-		b <- gsub(']', '', b)
-
-		# combine first and last words as new column names
-		colnames(output) <- tolower(paste0(a, '_', b))
-
-		# Ensure there are no duplicated colum names (data.table shenanigans)
-		output <- output[, !duplicated(colnames(output))]
-	}
-
-	if (grepl("TempPT100Port\\.txt$", file)) {
-		output <- utils::read.table(file, sep = "\t", skip = 12 + skip,
-									header = FALSE, strip.white = TRUE)
-
-		colnames(output) <- c('date_main', 'time_main', 'ds', 'temp', 'status')
-	}
-
-	# calculate POSIX timestamp
-	date_time_aux <- paste(output$date_main, output$time_main)
-	date_format <- paste(date_format, "%H:%M:%S")
-	output$date_time <- as.POSIXct(date_time_aux, format = date_format, tz = tz)
-
-	# reorganize columns
-	if (grepl("Oxygen\\.txt$", file)) {
-		output <- output[, c('date_time', 'sample_compt',
-							 'pressure_compp', 'oxygen_main')]
-		# units
-		file_header_string <- paste(file_header, collapse = " ")
-		o2_unit <- stringr::str_extract(file_header_string, 
-										"(?<=Oxygen \\()[^\\)]*")
-		units(output$oxygen_main) <- o2_unit
-
-		pr_unit <- stringr::str_extract(file_header_string, 
-										"(?<=Pressure \\()[^\\)]*")
-		units(output$pressure_compp) <- pr_unit
-
-		tp_unit <- stringr::str_extract(file_header_string, 
-										"(?<=Sample Temp. \\()[^\\)]*")
-		units(output$sample_compt) <- tp_unit
-
-		colnames(output)[2:4] <- paste0(c('temp_', 'pressure_', 'ox_'),
-										device, ch)
-		file_type <- "oxygen"
-	}
-
-	if (grepl("pH\\.txt$", file)) {
-		output <- output[, c('date_time', 'ph_main')]
-
-		# units
-		units(output$ph_main) <- "pH"
-
-		colnames(output)[2] <- paste0(c('ph_'),	device, ch)
-		file_type <- "ph"
-	}
-
-	if (grepl("TempPT100Port\\.txt$", file)) {
-		output <- output[, c('date_time', 'temp')]
-
-		# units
-		file_header_string <- paste(file_header, collapse = " ")
-		tp_unit <- stringr::str_extract(file_header_string, 
-										"(?<=Sample Temp. \\()[^\\)]*")
-		units(output$temp_main) <- tp_unit
-
-		colnames(output)[2] <- paste0(c('temp_'), device, ch)
-
-		file_type <- "temp"
-	}
-
-	attributes(output)$source_file <- file
-	attributes(output)$device <- device
-	attributes(output)$ch <- ch
-	attributes(output)$file_type <- file_type
-
-	return(output)
+	return(input)
 }
-
 
 #' Discard readings
 #' 
@@ -253,14 +295,25 @@ read_pyro_raw_file <- function(file, date_format,
 #' @export
 #'
 discard_phase <- function(input, probe, phase) {
-	target_phases <- input$cleaned$phase %in% phase 
+	target_phases <- input$cleaned$phase %in% phase
+
+	if (all(!target_phases)) {
+		stop("Couldn't find specified phases in the input.")
+	}
 	if (missing(probe)) {
 		target_probes <- rep(TRUE, nrow(input$cleaned))
 	} else {
 		target_probes <- input$cleaned$probe %in% probe
+		if (all(!target_probes)) {
+			stop("Couldn't find specified probes in the input.")
+		}
 	}
 
 	to_keep <- !(target_phases & target_probes)
+
+	if (all(to_keep)) {
+		stop("Couldn't find specified probe-phase combination in the input.")
+	}
 
 	input$cleaned <- input$cleaned[to_keep, ]
 	return(input)

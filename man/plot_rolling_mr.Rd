@@ -4,11 +4,15 @@
 \alias{plot_rolling_mr}
 \title{Plot the standard metabolic rates}
 \usage{
-plot_rolling_mr(input)
+plot_rolling_mr(input, probes, cycles)
 }
 \arguments{
 \item{input}{An experiment list with calculated rolling MR values.
 The output of \code{\link{roll_mr}}.}
+
+\item{probes}{A string of which probes to plot}
+
+\item{cycles}{A numeric vector of which cycles to plot}
 }
 \value{
 a ggplot object

@@ -16,7 +16,7 @@ dataframe must contain the following columns:
 - mass           : The mass of the animal, in grams
 - volume         : The non-corrected volume of the chamber + tubing
 - probe          : The device-channel combination for the probe
-- first_cycle : The first cycle of valid data for that animal}
+- first_cycle     : The first cycle of valid data for that animal}
 }
 \description{
 Also appends additional probe info if provided.
