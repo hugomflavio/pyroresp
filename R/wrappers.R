@@ -74,17 +74,18 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 #' @param folder the pyroscience run folder,
 #' 	containing a "ChannelData" folder inside
 #' @inheritParams read_pyro_raw_file
+#' @param type One of "Oxygen" to read only oxygen files, "pH" to read only pH
+#' 	files, or "Oxygen|pH" to read both.
 #'
 #' @export
 #'
-load_pyro_data <- function(folder, date_format, tz) {
+load_pyro_data <- function(folder, date_format, tz, 
+		type = c("Oxygen", "pH", "Oxygen|pH")) {
+	type <- match.arg(type)
+
 	files <- list.files(paste0(folder, '/ChannelData/'))
 
-	file_link <- grepl("Oxygen|pH", files)
-
-	if (all(!file_link)) {
-		stop('No probe files found')
-	}
+	file_link <- grepl(type, files)
 
 	files <- files[file_link]
 
