@@ -350,59 +350,69 @@ rename_phases <- function(input) {
 #' @export
 #' 
 merge_pyro_phases <- function(input) {
-	pyrodata <- input$pyro$compiled_data
+	pyr <- input$pyro$compiled_data
 
 	phases <- input$phases
 
 	new_col_order <- 1
 
-	check_devices_match(colnames(pyrodata), names(phases))
-	check_probes_match(colnames(pyrodata), phases)
+	check_devices_match(colnames(pyr), names(phases))
+	check_probes_match(colnames(pyr), phases)
 
 	tmp <- lapply(1:length(phases), function(dvc) {
 		lapply(1:length(phases[[dvc]]), function(prb) {
-			# create column with placeholders
-			new_col <- paste0("phase_", names(phases)[dvc], prb)
-			pyrodata[, new_col] <- "F0"
+			# create column with placeholders if probe is in the data
+			keyword <- paste0("_", names(phases)[dvc], prb, "$")
+			if (any(grepl(keyword, colnames(pyr)))) {
 
-			# assign phases
-			for (i in 1:nrow(phases[[dvc]][[prb]])) {
-				check1 <- pyrodata$date_time >= phases[[dvc]][[prb]]$start[i]
-				check2 <- pyrodata$date_time <= phases[[dvc]][[prb]]$stop[i]
-				this_phase <- check1 & check2
+				new_col <- paste0("phase_", names(phases)[dvc], prb)
+				pyr[, new_col] <- "F0"
 
-				pyrodata[this_phase, new_col] <- phases[[dvc]][[prb]]$phase[i]
+				# assign phases
+				for (i in 1:nrow(phases[[dvc]][[prb]])) {
+					check1 <- pyr$date_time >= phases[[dvc]][[prb]]$start[i]
+					check2 <- pyr$date_time <= phases[[dvc]][[prb]]$stop[i]
+					this_phase <- check1 & check2
+
+					pyr[this_phase, new_col] <- phases[[dvc]][[prb]]$phase[i]
+				}
+
+				NA_check <- is.na(pyr[, new_col])
+				if (any(NA_check)) {
+					warning(sum(NA_check), " measurement(s) in device ",dvc,
+							", probe ", prb,
+							" could not be assigned to a phase!",
+							call. = FALSE, immediate. = TRUE)
+				}
+
+				pyr[, new_col] <- factor(pyr[, new_col], 
+											  levels = unique(pyr[, new_col]))
+			
+				# export pyrodata object to outside of 
+				# the lapply loop to save changes
+				pyr <<- pyr
+
+				# export location of columns pertaining to this
+				# probe so they can all be grouped in final output
+				dvc_prb <- paste0(names(phases)[dvc], prb)
+				relevant_columns <- grep(dvc_prb, colnames(pyr))
+				new_col_order <<- c(new_col_order, relevant_columns)
+			} else {
+				warning("Phases present for probe ", names(phases)[dvc], prb,
+					" but no matching pyro data found. ",
+					"Disregarding this probe.",
+					call. = FALSE, immediate. = TRUE)
 			}
-
-			NA_check <- is.na(pyrodata[, new_col])
-			if (any(NA_check)) {
-				warning(sum(NA_check), " measurement(s) in device ",dvc,
-						", probe ", prb, " could not be assigned to a phase!",
-						call. = FALSE, immediate. = TRUE)
-			}
-
-			pyrodata[, new_col] <- factor(pyrodata[, new_col], 
-										  levels = unique(pyrodata[, new_col]))
-		
-			# export pyrodata object to outside of 
-			# the lapply loop to save changes
-			pyrodata <<- pyrodata
-
-			# export location of columns pertaining to this
-			# probe so they can all be grouped in final output
-			dvc_prb <- paste0(names(phases)[dvc], prb)
-			relevant_columns <- grep(dvc_prb, colnames(pyrodata))
-			new_col_order <<- c(new_col_order, relevant_columns)
 		})
 		# export pyrodata object to outside of the lapply loop
-		pyrodata <<- pyrodata
+		pyr <<- pyr
 		new_col_order <<- new_col_order
 	})
 	rm(tmp)
 	
-	pyrodata <- pyrodata[, new_col_order]
+	pyr <- pyr[, new_col_order]
 
-	input$phased <- pyrodata
+	input$phased <- pyr
 
 	return(input)
 }
