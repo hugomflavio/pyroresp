@@ -286,33 +286,36 @@ aux_fun_process_NAs <- function(nas, col, input, patch_method, verbose) {
 #' 
 #' @param input A computer-friendly data frame.
 #' 	The output of \code{\link{melt_resp}} or any downstream function.
-#' @param probe The probe(s) from which to discard data. Ommit to discard phases
+#' @param probes The probe(s) from which to discard data. Ommit to discard phases
 #' 	from all probes.
-#' @param phase The phase(s) to discard.
+#' @param cycles The cycles(s) to discard.
 #' 
 #' @return the input data frame without the discarded readings.
 #'
 #' @export
 #'
-discard_phase <- function(input, probe, phase) {
-	target_phases <- input$cleaned$phase %in% phase
+discard_cycles <- function(input, probes, cycles) {
+	cycles <- check_arg_in_data(cycles, input$cleaned$cycle, "cycles")
+	target_cycles <- input$cleaned$cycle %in% cycles
 
-	if (all(!target_phases)) {
-		stop("Couldn't find specified phases in the input.")
+	if (all(!target_cycles)) {
+		stop("Couldn't find specified cycles in the input.")
 	}
-	if (missing(probe)) {
+
+	if (missing(probes)) {
 		target_probes <- rep(TRUE, nrow(input$cleaned))
 	} else {
-		target_probes <- input$cleaned$probe %in% probe
+		probes <- check_arg_in_data(probes, input$cleaned$probe, "probes")
+		target_probes <- input$cleaned$probe %in% probes
 		if (all(!target_probes)) {
 			stop("Couldn't find specified probes in the input.")
 		}
 	}
 
-	to_keep <- !(target_phases & target_probes)
+	to_keep <- !(target_cycles & target_probes)
 
 	if (all(to_keep)) {
-		stop("Couldn't find specified probe-phase combination in the input.")
+		stop("Couldn't find specified probe-cycle combination in the input.")
 	}
 
 	input$cleaned <- input$cleaned[to_keep, ]

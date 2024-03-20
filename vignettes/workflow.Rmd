@@ -221,18 +221,19 @@ Some common issues:
 - An instantaneous drop/rise in O<sub>2</sub> concentration may indicate either a pressure change (e.g. the flush pump turning off), or a grounding issue in one of the pumps affecting the temperature probe. The former may not be problematic if it happens during flush. If the latter, ground the water bath to minimize the interference.
 
 
-### Can I remove phases that are off and affecting my background?
+### Can I remove cycles that are off and affecting my background?
 
-You can remove phases that for some reason are weird using the `discard_phase()` function. Remember that you will have to re-run `calc_bg()` after removing the bad data.
+You can remove phases that for some reason are weird using the `discard_cycles()` function. Remember that you will have to re-run `calc_bg()` after removing the bad data.
 
 ```r
-pre_bg <- discard_phase(input = pre_bg,
-                        probe = "A1",
-                        phase = "M1")
+pre_bg <- discard_cycles(input = pre_bg,
+                         probes = "A1",
+                         cycles = 1)
 ```
 
-**Note:** You may run `discard_phase()` several times in sequence to remove different combinations of probes and phases.
+**Note:** You may run `discard_cycles()` several times in sequence to remove different combinations of probes and phases.
 
+**Also note:** You can use `discard_cycles()` to remove unwanted cycles from metabolic rate data as well!
 
 ### Can I copy backgrounds between probes to save a ruined background reading?
 
