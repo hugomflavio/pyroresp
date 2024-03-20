@@ -155,10 +155,10 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
 
 	patch_method <- match.arg(patch_method)
 
-	all_units = c("hPa", "kPa", "torr", "mmHg", "inHg", "mg_per_l", 
-				  "ug_per_l", "umol_per_l", "mmol_per_l", "ml_per_l",
-				  "mg_per_kg", "ug_per_kg", "umol_per_kg", "mmol_per_kg", 
-				  "ml_per_kg")																														
+	all_units <- c("hPa", "kPa", "torr", "mmHg", "inHg", "mg_per_l", 
+				   "ug_per_l", "umol_per_l", "mmol_per_l", "ml_per_l",
+				   "mg_per_kg", "ug_per_kg", "umol_per_kg", "mmol_per_kg", 
+				   "ml_per_kg")																														
 
 	if (!missing(convert_o2_unit_to) && !(convert_o2_unit_to %in% all_units)) {
 		stop("the 'convert_o2_unit_to' argument is not an acceptable unit. ",
@@ -188,47 +188,64 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
 
 	if (verbose) message("M: Calculating air saturation")
 
-	input$cleaned$airsat  <- 
+	o2_conv_cols <- c("o2", "temp", "sal", "pressure")
+	not_NA <- complete.cases(input$cleaned[, o2_conv_cols])
+	original_o2 <- sub("/", "_per_", units(input$cleaned$o2))
+
+	input$cleaned$airsat <- NA
+	input$cleaned$airsat[not_NA] <- 
 		respirometry::conv_o2(
-			o2 = as.numeric(input$cleaned$o2),
-			from = sub("/", "_per_", as.character(units(input$cleaned$o2))),
+			o2 = as.numeric(input$cleaned$o2[not_NA]),
+			from = original_o2,
 			to = "percent_a.s.", 
-			temp = as.numeric(input$cleaned$temp), 
-			sal = as.numeric(input$cleaned$sal), 
-			atm_pres = as.numeric(input$cleaned$pressure)
+			temp = as.numeric(input$cleaned$temp[not_NA]), 
+			sal = as.numeric(input$cleaned$sal[not_NA]), 
+			atm_pres = as.numeric(input$cleaned$pressure[not_NA])
 		)
 	units(input$cleaned$airsat) <- "percent"
 
 	if (!missing(convert_o2_unit_to)) {
 		
-		original_o2 <- sub("/", "_per_", as.character(units(input$melted$o2)))
-
 		if (verbose) {
 			message("M: Converting oxygen unit from ", original_o2, 
 					" to ", convert_o2_unit_to, ".")	
 		}
 		
-		input$melted$o2 <-
+		# if there is an o2 value but not all the others
+		if (any(!is.na(input$cleaned$o2) & !not_NA)) {
+			warning_cases <- sum(!is.na(input$cleaned$o2) & !not_NA)
+			warning("Invalidating ", warning_cases, "oxygen value(s) as one ",
+				"or more of the respective temperature, salinity, or pressure ",
+				"values are missing, making it impossible to convert unit.")
+			input$cleaned$o2[!not_NA] <- NA
+		}
+
+		input$cleaned$o2 <- as.numeric(input$cleaned$o2)
+		input$cleaned$o2[not_NA] <- 
 			respirometry::conv_o2(
-				o2 = as.numeric(input$melted$o2),
+				o2 = input$cleaned$o2[not_NA],
 				from = original_o2,
 				to = convert_o2_unit_to, 
-				temp = as.numeric(input$melted$temp), 
-				sal = as.numeric(input$melted$sal), 
-				atm_pres = as.numeric(input$melted$pressure)
-			)
-		units(input$melted$o2) <- gsub("_per_", "/", convert_o2_unit_to)
-
-		input$cleaned$o2  <- 
-			respirometry::conv_o2(
-				o2 = as.numeric(input$cleaned$o2),
-				from = sub("/", "_per_", as.character(units(input$cleaned$o2))),
-				to = convert_o2_unit_to, 
-				temp = as.numeric(input$cleaned$temp), 
-				sal = as.numeric(input$cleaned$sal), 
-				atm_pres = as.numeric(input$cleaned$pressure)
+				temp = as.numeric(input$cleaned$temp[not_NA]), 
+				sal = as.numeric(input$cleaned$sal[not_NA]), 
+				atm_pres = as.numeric(input$cleaned$pressure[not_NA])
 			)
 		units(input$cleaned$o2) <- gsub("_per_", "/", convert_o2_unit_to)
+
+		# convert from melted too, which is used for plot_meas
+		not_NA <- complete.cases(input$melted[, o2_conv_cols])
+		input$melted$o2[!not_NA] <- NA
+		input$melted$o2 <- as.numeric(input$melted$o2)
+		input$melted$o2[not_NA] <-
+			respirometry::conv_o2(
+				o2 = input$melted$o2[not_NA],
+				from = original_o2,
+				to = convert_o2_unit_to, 
+				temp = as.numeric(input$melted$temp[not_NA]), 
+				sal = as.numeric(input$melted$sal[not_NA]), 
+				atm_pres = as.numeric(input$melted$pressure[not_NA])
+			)
+		units(input$melted$o2) <- gsub("_per_", "/", convert_o2_unit_to)
 	}
 
 	if (verbose) message("M: Calculating deltas.")

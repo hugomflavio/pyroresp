@@ -180,11 +180,11 @@ patch_NAs <- function(input, patch_method = c('linear', 'before', 'after'),
 				ngaps <- sum(nas$n > 5)
 				warning("Found ",
 						ifelse(ngaps == 1, 
-							   " a wide gap", 
+							   "a wide gap", 
 							   paste(ngaps, "wide gaps")),
 						" of NAs in column ", i, " (n > 5).",
 						" Won't auto-fix wide gaps. Check data manually.",
-						immediate. = TRUE, call. = TRUE)
+						immediate. = TRUE, call. = FALSE)
 
 				nas <- nas[nas$n <= 5, ]
 			}
