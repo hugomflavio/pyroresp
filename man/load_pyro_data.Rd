@@ -4,7 +4,7 @@
 \alias{load_pyro_data}
 \title{Wrapper to scan a pyro folder and load raw data files.}
 \usage{
-load_pyro_data(folder, date_format, tz)
+load_pyro_data(folder, date_format, tz, type = c("Oxygen", "pH", "Oxygen|pH"))
 }
 \arguments{
 \item{folder}{the pyroscience run folder,
@@ -13,6 +13,9 @@ containing a "ChannelData" folder inside}
 \item{date_format}{the format used in the raw date values (locale dependent)}
 
 \item{tz}{The time zone of the data. Defaults to the system time zone.}
+
+\item{type}{One of "Oxygen" to read only oxygen files, "pH" to read only pH
+files, or "Oxygen|pH" to read both.}
 }
 \description{
 Wrapper to scan a pyro folder and load raw data files.
