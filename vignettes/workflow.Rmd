@@ -27,7 +27,7 @@ should be acknowledged:
 
 ## Expected input data
 
-Regardless of if you are importing a background or metabolic rate dataset, the input files should be organized in the same fashion. For the most part, the default file organization out of the workbench software is what you need. You will also want to have a file keeping track of the chamber phases inside the folder of the experiment. Here's an example of how your data folder should look like:
+Whether you are importing a background or metabolic rate dataset, the input files should be organized in the same fashion. For the most part, the default file organization out of the workbench software is what you need. You will also want to have a file keeping track of the chamber phases inside the folder of the experiment. Here's an example of how your data folder should look like:
 
 <pre>
 - 2024-03-13_091010_pre_bg
