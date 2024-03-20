@@ -15,7 +15,6 @@ calc_slopes <- function(input) {
     by_phase <- by_phase[sapply(by_phase, nrow) > 0]
 
     recipient <- lapply(by_phase, function(phase) {
-
         output <- data.frame(probe = phase$probe[1],
                              id = phase$id[1],
                              mass = phase$mass[1],
@@ -44,15 +43,14 @@ calc_slopes <- function(input) {
         output$slope_cor <- coef(m_cor)[2]
         output$se <- summary(m_cor)$coef[4]
         output$r2 <- summary(m_cor)$r.squared
-
-        #make a dummy variable to let {units} figure the units out by itself
-        dummy <- phase$o2_delta[1] / phase$phase_time[1]
-        units(output$slope_with_bg) <- units(dummy)
-        
-        dummy <- phase$o2_cordelta[1] / phase$phase_time[1]
-        units(output$slope_cor) <- units(dummy)
       }
-
+      #make a dummy variable to let {units} figure the units out by itself
+      dummy <- phase$o2_delta[1] / phase$phase_time[1]
+      units(output$slope_with_bg) <- units(dummy)
+      
+      dummy <- phase$o2_cordelta[1] / phase$phase_time[1]
+      units(output$slope_cor) <- units(dummy)
+     
       return(output)
     })
     # start rebinding back to a data table
@@ -61,6 +59,12 @@ calc_slopes <- function(input) {
   })
 
   output <- as.data.frame(data.table::rbindlist(recipient))
+
+  if (any(is.na(output$slope_cor))) {
+    warning("Could not calculate slopes for ", sum(is.na(output$slope_cor)), 
+            " probe-cycle combinations.",
+            immediate. = TRUE, call. = FALSE)
+  }
 
   return(output)
 }
@@ -78,9 +82,13 @@ calc_slopes <- function(input) {
 #' @export
 #'
 filter_r2 <- function(slopes, r2 = 0.95){
-  to_exclude <- sum(slopes$r2 < r2)
-  total <- nrow(slopes)
-  slopes <- slopes[slopes$r2 >= r2, ]
+  to_exclude <- sum(slopes$r2 < r2, na.rm = TRUE)
+  total <- sum(!is.na(slopes$r2))
+
+  to_keep <- slopes$r2 >= r2
+  to_keep[is.na(to_keep)] <- FALSE
+  
+  slopes <- slopes[to_keep, ]
 
   message("Excluded ", to_exclude, " slope(s) (", 
           round(to_exclude / total * 100, 1),

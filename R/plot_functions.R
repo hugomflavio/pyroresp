@@ -248,7 +248,7 @@ plot_deltas <- function(input, cycles, probes, verbose = TRUE) {
 #' 
 plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 	# ggplot variables
-	date_time <- slope_cor <- Valid <- NULL
+	date_time <- slope_cor <- valid <- NULL
 
 	slopes <- input$all_slopes
 	slopes$idprobe <- paste0(slopes$id, " (", slopes$probe, ")")
@@ -260,7 +260,8 @@ plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 	slope_unit <- units(slopes$slope_cor)
 	slopes$slope_cor <- as.numeric(slopes$slope_cor)
 	r2_threshold <- attributes(input$good_slopes)$r2_threshold
-	slopes$Valid <- slopes$r2 > r2_threshold
+	slopes$valid <- slopes$r2 > r2_threshold
+	slopes$valid[is.na(slopes$valid)] <- FALSE
 
 	if (!missing(cycles)) {
 		cycles <- check_arg_in_data(cycles, slopes$cycle,
@@ -307,11 +308,11 @@ plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 		p <- p + ggplot2::geom_line(ggplot2::aes(y = data.link(r2)), 
 									col = "grey")
 		p <- p + ggplot2::geom_point(ggplot2::aes(y = data.link(r2),
-									col = Valid))
+									col = valid))
  		p <- p + ggplot2::scale_y_continuous(sec.axis = 
  			ggplot2::sec_axis(trans = axis_link, name = "R2")
  		)
-		if (any(!slopes$Valid)) {
+		if (any(!slopes$valid)) {
 			p <- p + ggplot2::scale_colour_manual(
 				values = c("Red", "Black", "Grey"))
 		} else {

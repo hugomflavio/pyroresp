@@ -54,19 +54,22 @@ melt_resp <- function(input, probe_info) {
 
   pre_output <- cbind(ox_aux, pressure_aux, temp_aux, sal_aux, phase_aux)
 
-  if (any(grepl("ph_", colnames(input))))
+  if (any(grepl("ph_", colnames(input)))) {
     pre_output$ph <- as.vector(t(input[, grepl("ph_", colnames(input))]))
+  }
 
   pre_output$cycle <- as.numeric(sub("F|M", "", as.character(pre_output$phase)))
 
   # if fish information is provided
   if (!is.null(probe_info)) {
-    # include fish information
+    # discard any data that does not match the probes we want.
+    pre_output <- pre_output[pre_output$probe %in% probe_info$probe, ]
+
+    # Then include the extra information
     link <- match(pre_output$probe, probe_info$probe)
     pre_output <- cbind(pre_output, probe_info[link, c("id", "mass", "volume")])
   
     # and trim away the cycles that happen before the first_cycle
-
     by_probe <- split(pre_output, pre_output$probe)
     
     recipient <- lapply(names(by_probe), function(the_probe, probe_info) {
