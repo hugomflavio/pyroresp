@@ -501,8 +501,7 @@ plot_rolling_mr <- function(input, probes, cycles) {
 
 	# make facets
 	aux <- unique(mr[, c("id", "probe", "cycle")])
-	aux <- aux[order(aux$cycle), ]
-	aux <- aux[match(aux$probe, input$probe_info$probe), ]
+	aux <- aux[order(aux$probe), ]
 
 	ipp_levels <- paste0(aux$id, " (", 
 						 aux$probe, ") - ", 
