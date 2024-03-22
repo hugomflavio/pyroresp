@@ -40,6 +40,17 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 		phases_file <- paste0(folder, "/", phases_file)
 	}
 
+	if (!missing(probe_info)) {
+		required_cols <- c("id", "mass", "volume", "probe", "first_cycle")
+		cols_missing <- !(required_cols %in% colnames(probe_info))
+		if (any(cols_missing)) {
+			stop("The following required columns are missing ",
+				 "from the probe_info input: ",
+				 paste0(required_cols[cols_missing], collapse = ", "),
+				 call. = FALSE)
+		}
+	}
+
 	output <- list()
 
 	phases <- lapply(phases_file, function(file) {
