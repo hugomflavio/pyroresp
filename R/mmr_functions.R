@@ -17,7 +17,7 @@ extract_mmr <- function(mr){
   mmr <- as.data.frame(data.table::rbindlist(recipient))
   
   # Keep only needed columns
-  mmr <- mmr[, c("probe", "id", "mass", "date_time", "phase", "mr_cor")]
+  mmr <- mmr[, c("probe", "id", "mass", "date_time", "cycle", "mr_cor")]
 
   return(mmr)
 }
