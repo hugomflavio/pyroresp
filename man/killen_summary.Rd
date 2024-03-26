@@ -6,6 +6,9 @@
 \usage{
 killen_summary(input)
 }
+\arguments{
+\item{input}{An analysis list that went through \code{\link{process_mr}}.}
+}
 \value{
 a list of summary information
 }
@@ -13,7 +16,7 @@ a list of summary information
 For more information on these points, see Killen et al. 2021:
 }
 \references{
-Killen, S. S., Christensen, E. A. F., Cortese, D., Závorka, L.,
+Killen, S. S., Christensen, E. A. F., Cortese, D., Z\'{a}vorka, L.,
 Norin, T., Cotgrove, L., Crespel, A., Munson, A., Nati, J. J. H.,
 Papatheodoulou, M., & McKenzie, D. J. (2021). Guidelines for reporting
 methods to estimate metabolic rates by aquatic intermittent-flow

@@ -2,7 +2,9 @@
 #' 
 #' For more information on these points, see Killen et al. 2021:
 #' 
-#' @references Killen, S. S., Christensen, E. A. F., Cortese, D., Závorka, L.,
+#' @param input An analysis list that went through \code{\link{process_mr}}.
+#' 
+#' @references Killen, S. S., Christensen, E. A. F., Cortese, D., Z\'{a}vorka, L.,
 #' 	Norin, T., Cotgrove, L., Crespel, A., Munson, A., Nati, J. J. H., 
 #' 	Papatheodoulou, M., & McKenzie, D. J. (2021). Guidelines for reporting 
 #' 	methods to estimate metabolic rates by aquatic intermittent-flow 
@@ -89,7 +91,7 @@ killen_summary <- function(input) {
 		pt39 = pt39,
 		pt51 = paste0("Oxygen uptake rates were calculated using ",
 		   		    "the R package pyroresp (version ",
-		   		    packageVersion("pyroresp"), "; Flávio, 2024)."),
+		   		    packageVersion("pyroresp"), "; Fl\u00e1vio, 2024)."),
 		pt52 = "Yes"
 		)
 	return(output)
