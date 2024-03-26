@@ -54,7 +54,10 @@ killen_summary <- function(input) {
 	by_probe <- table(input$all_slopes$probe)
 	by_probe <- as.data.frame(by_probe)
 	colnames(by_probe) <- c("probe", "n_all")
-	by_probe$n_good <- as.data.frame(table(input$good_slopes$probe))$Freq
+	aux <- as.data.frame(table(input$good_slopes$probe))
+	colnames(aux) <- c("probe", "n_good")
+	by_probe <- merge(by_probe, aux, by = "probe", all = TRUE)
+	by_probe$n_good[is.na(by_probe$n_good)] <- 0
 	by_probe$n_discarded <- by_probe$n_all - by_probe$n_good
 	by_probe$pct_discarded <- by_probe$n_discarded / by_probe$n_all * 100
 	units(by_probe$pct_discarded) <- "percent"
