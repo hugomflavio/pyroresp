@@ -15,12 +15,12 @@ VignetteBuilder: knitr,
                  rmarkdown
 Depends: R (>= 4.0.0),
          units,
+         patchwork
 Imports: 
     chron, 
     data.table,
     ggplot2,
     mclust, 
-    patchwork,
     reshape2,
     respirometry,
     stats,
