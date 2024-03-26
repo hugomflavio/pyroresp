@@ -66,6 +66,11 @@ calc_slopes <- function(input) {
             immediate. = TRUE, call. = FALSE)
   }
 
+  # keep important attribute
+  x <- data.frame(a = 1)
+  attributes(x)
+  attributes(output)
+
   return(output)
 }
 

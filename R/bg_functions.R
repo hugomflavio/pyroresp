@@ -383,6 +383,7 @@ subtract_bg <- function (input, pre, post,
   })
 
   output <- as.data.frame(data.table::rbindlist(aux))
+  output <- transfer_attributes(input$cleaned, output)
   attributes(output)$correction_method <- method
 
   input$cleaned <- output

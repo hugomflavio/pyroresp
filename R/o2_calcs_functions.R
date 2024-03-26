@@ -90,6 +90,9 @@ clean_meas <- function(input, wait = 0, auto_cut_last = FALSE){
 
   output <- as.data.frame(data.table::rbindlist(recipient))
 
+  units(wait) <- "seconds"
+  attributes(output)$wait_time <- wait
+
   return(output)
 }
 
@@ -129,6 +132,8 @@ calc_delta <- function(input) {
   })
 
   output <- as.data.frame(data.table::rbindlist(recipient))
+
+  output <- transfer_attributes(input, output)
 
   return(output)
 }

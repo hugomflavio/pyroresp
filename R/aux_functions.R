@@ -138,3 +138,58 @@ assign_device_names <- function(folder, assign_list, confirmed = FALSE) {
 						"confirmed = TRUE.", call. = FALSE)
 	}
 }
+
+
+from <- data.frame(a = 1, b = 2)
+to <- data.frame(c = 3)
+attributes(to)$test <- "test?"
+
+
+#' helper function to avoid attribute loss
+#' caused by the split->lapply->rbind process
+#' 
+#' @param from The original data frame
+#' @param to The remade data frame
+#' 
+#' @keywords internal
+#' 
+#' @return "to", with any new attributes transferred from "from."
+transfer_attributes <- function(from, to) {
+	attr_from <- names(attributes(from))
+	attr_to <- names(attributes(to))
+
+	to_transfer <- attr_from[!(attr_from %in% attr_to)]
+
+	if (length(to_transfer) > 0) {
+		for (i in to_transfer) {
+			attributes(to)[i] <- attributes(from)[i]
+		}
+	}
+
+	return(to)
+}
+
+#' calculate standard error of the mean
+#' 
+#' @param x a vector of numbers
+#' @param na.rm Defaults to TRUE
+#' 
+#' @return the SEM value
+#' 
+#' @export
+#' 
+sem <- function(x, na.rm = TRUE){
+    a <- length(x)
+
+    if(na.rm) {
+        x <- x[!is.na(x)]
+    }
+    
+    if(a != length(x)) {
+        message("M: Omitted ", a - length(x), " missing values.")
+		}
+    
+    output <- sd(x) / sqrt(length(x))
+ 
+    return(output)
+}

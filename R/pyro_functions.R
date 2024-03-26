@@ -19,14 +19,18 @@ read_pyro_raw_file <- function(file, date_format,
 	}
 
 	# identify device and channel name
-	file_header <- readLines(file, n = 15)
+	file_header <- readLines(file, n = 20)
 	device_line <- file_header[grepl("^#Device", file_header)]
 	device <- stringr::str_extract(device_line,'(?<=Device: )[^\\[]*')
 	device <- sub(" $", "", device)
 	ch <- stringr::str_extract(file,'(?<=Ch.)[0-9]')
 
-
 	if (grepl("Oxygen\\.txt$", file) || grepl("pH\\.txt$", file)) {
+
+		cal_line <- grep("lastCal", file_header)
+		cal_headers <- unlist(strsplit(file_header[cal_line], "\t"))[-1]
+		cal_settings <- unlist(strsplit(file_header[cal_line + 1], "\t"))[-1]
+		names(cal_settings) <- cal_headers
 
 		base_skip <- if (grepl("Oxygen\\.txt$", file)) 24 else 20
 
@@ -59,6 +63,12 @@ read_pyro_raw_file <- function(file, date_format,
 	}
 
 	if (grepl("TempPT100Port\\.txt$", file)) {
+
+		cal_line <- grep("Calibration offset", file_header)
+		cal_settings <- stringr::str_extract(file_header[cal_line], 
+								 		"(?<=Calibration offset = )[0-9|\\.]*")
+		names(cal_settings) <- "Calibration offset"
+
 		output <- utils::read.table(file, sep = "\t", skip = 12 + skip,
 									header = FALSE, strip.white = TRUE)
 
@@ -126,6 +136,7 @@ read_pyro_raw_file <- function(file, date_format,
 	attributes(output)$device <- device
 	attributes(output)$ch <- ch
 	attributes(output)$file_type <- file_type
+	attributes(output)$cal_settings <- cal_settings
 
 	return(output)
 }
