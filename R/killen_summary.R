@@ -30,7 +30,8 @@ killen_summary <- function(input) {
 		exp_day <- as.Date(min(input$pyro$compiled_data$date_time))
 		for(i in which(date_cols)) {
 			pt15[, i] <- as.Date(pt15[, i])
-			pt15[, paste0("cal", i, "_to_exp_start")] <- 
+			n <- sub("lastCal", "", colnames(pt15)[i])
+			pt15[, paste0("cal", n, "_to_exp_start")] <- 
 				difftime(exp_day, pt15[, i], units = "days")
 
 		}
