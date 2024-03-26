@@ -359,6 +359,7 @@ subtract_bg <- function (input, pre, post,
   # transfer bg readings
   if (method == "none") {
     input$cleaned$o2_bg <- 0
+    units(input$cleaned$o2_bg) <- units(input$cleaned$o2)
   } else {
     link <- match(input$cleaned$tmp_index, my_bg$tmp_index)
     input$cleaned$o2_bg <- my_bg$o2_bg[link]
