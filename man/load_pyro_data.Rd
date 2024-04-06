@@ -4,7 +4,13 @@
 \alias{load_pyro_data}
 \title{Wrapper to scan a pyro folder and load raw data files.}
 \usage{
-load_pyro_data(folder, date_format, tz, type = c("Oxygen", "pH", "Oxygen|pH"))
+load_pyro_data(
+  folder,
+  date_format,
+  tz,
+  type = c("Oxygen", "pH", "Oxygen|pH"),
+  encoding = "iso-8859-1"
+)
 }
 \arguments{
 \item{folder}{the pyroscience run folder,
@@ -16,6 +22,9 @@ containing a "ChannelData" folder inside}
 
 \item{type}{One of "Oxygen" to read only oxygen files, "pH" to read only pH
 files, or "Oxygen|pH" to read both.}
+
+\item{encoding}{the encoding of the source file. Defaults to "iso-8859-1",
+which is the encoding used by the pyro workbench software.}
 }
 \description{
 Wrapper to scan a pyro folder and load raw data files.

@@ -5,5 +5,6 @@
 #' @import units
 #' @import stats
 #' @import utils
+#' @import patchwork
 #' 
 "_PACKAGE"

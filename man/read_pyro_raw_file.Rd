@@ -4,7 +4,13 @@
 \alias{read_pyro_raw_file}
 \title{Load a single raw channel file}
 \usage{
-read_pyro_raw_file(file, date_format, skip = 0, tz = Sys.timezone())
+read_pyro_raw_file(
+  file,
+  date_format,
+  skip = 0,
+  tz = Sys.timezone(),
+  encoding = "iso-8859-1"
+)
 }
 \arguments{
 \item{file}{the path to a raw channel data file.}
@@ -16,6 +22,9 @@ number of lines to skip from the top of the file. It is the number of lines
 to skip once the actual raw data starts.}
 
 \item{tz}{The time zone of the data. Defaults to the system time zone.}
+
+\item{encoding}{the encoding of the source file. Defaults to "iso-8859-1",
+which is the encoding used by the pyro workbench software.}
 }
 \value{
 A data frame containing the inported data

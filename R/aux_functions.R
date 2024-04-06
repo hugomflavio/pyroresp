@@ -10,7 +10,7 @@
 #' 
 #' @return The outcome of the expression
 #' 
-supress_EOL_warning <- function(expr) {
+suppress_EOL_warning <- function(expr) {
 	.suppress_eol <- function(w) {
 		if (!grepl("incomplete final line", w$message)) {
 			warning(w)

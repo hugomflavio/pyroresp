@@ -6,6 +6,8 @@
 #' 	number of lines to skip from the top of the file. It is the number of lines
 #' 	to skip once the actual raw data starts.
 #' @param tz The time zone of the data. Defaults to the system time zone.
+#' @param encoding the encoding of the source file. Defaults to "iso-8859-1",
+#' 	which is the encoding used by the pyro workbench software.
 #'
 #' @return A data frame containing the inported data
 #'

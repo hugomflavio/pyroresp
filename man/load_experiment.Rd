@@ -10,7 +10,8 @@ load_experiment(
   tz = Sys.timezone(),
   phases_file = "CoolTerm",
   probe_info,
-  fix_phases = TRUE
+  fix_phases = TRUE,
+  encoding = "iso-8859-1"
 )
 }
 \arguments{
@@ -32,6 +33,9 @@ dataframe must contain the following columns:
 
 \item{fix_phases}{Automatically correct any overlaps, gaps, or repeated
 phase names found in the file.}
+
+\item{encoding}{the encoding of the source file. Defaults to "iso-8859-1",
+which is the encoding used by the pyro workbench software.}
 }
 \value{
 A list containing a phases dataframe and a pyro list with the
