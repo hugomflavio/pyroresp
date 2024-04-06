@@ -120,7 +120,7 @@ calc_bg <- function(input, method = c('mean', 'first', 'last'),
   output <- as.data.frame(data.table::rbindlist(bg_lists, idcol = 'probe'))
 
   units(output$phase_time) <- units(cleaned$phase_time)
-  units(output$o2_bg) <- units(cleaned$o2)
+  units(output$o2_bg) <- units(cleaned$o2_delta)
 
   input$bg <- output
 
