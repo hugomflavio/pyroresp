@@ -52,7 +52,6 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 		}
 	}
 
-	output <- list()
 
 	phases <- lapply(phases_file, function(file) {
 		load_phases_file(file, fix_phases = fix_phases)
@@ -67,10 +66,11 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 				paste(names(phases), collapse = ", "), ".")
 	}
 
-	output$phases <- phases
-	output$pyro <- load_pyro_data(folder, date_format = date_format, tz = tz,
-								  encoding = encoding)
+	pyro <- load_pyro_data(folder, date_format = date_format, tz = tz,
+						   encoding = encoding)
 
+	output <- list(phases = phases, pyro = pyro)
+	
 	if (!missing(probe_info)) {
 		output$probe_info <- probe_info
 

@@ -14,14 +14,20 @@
 #' @export
 #'
 read_pyro_raw_file <- function(file, date_format,
-		skip = 0, tz = Sys.timezone(), encoding = "iso-8859-1") {
+		skip = 0, tz = Sys.timezone(), encoding = "ISO-8859-1") {
 
 	if (length(file) == 0 || !file.exists(file)) {
 		stop("Could not find target file.", call. = FALSE)
 	}
 
+	if(encoding %in% stringi::stri_enc_list()) {
+		stop("encoding argument not recognized. See stringi::stri_enc_list()",
+			 " for a complete list of recognized values")
+	}
+
 	# identify device and channel name
-	file_header <- readLines(file, n = 20, encoding = encoding, warn = FALSE)
+	file_header <- readLines(file, n = 20, warn = FALSE)
+	file_header <- stringr::str_conv(file_header, encoding = encoding)
 	device_line <- file_header[grepl("^#Device", file_header)]
 	device <- stringr::str_extract(device_line,'(?<=Device: )[^\\[]*')
 	device <- sub(" $", "", device)
@@ -39,7 +45,7 @@ read_pyro_raw_file <- function(file, date_format,
 		# grab first row to compile col names
 		table_header <- suppress_EOL_warning(
 							read.table(file, sep = "\t", skip = base_skip,
-							 		   header = T, strip.white = TRUE,
+							 		   header = FALSE, strip.white = TRUE,
 							 		   nrows = 1, fileEncoding = encoding)
 						)
 
