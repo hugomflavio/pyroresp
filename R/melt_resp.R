@@ -65,6 +65,11 @@ melt_resp <- function(input, probe_info) {
     # discard any data that does not match the probes we want.
     pre_output <- pre_output[pre_output$probe %in% probe_info$probe, ]
 
+    if (nrow(pre_output) == 0) {
+      stop("The probes listed in probe_info don't match any probe listed on ",
+           "the data. Aborting.")
+    }
+
     # Then include the extra information
     link <- match(pre_output$probe, probe_info$probe)
     pre_output <- cbind(pre_output, probe_info[link, c("id", "mass", "volume")])
