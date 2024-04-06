@@ -24,14 +24,14 @@ calc_bg <- function(input, method = c('mean', 'first', 'last'),
 
   # extract some variables we'll be using for convenience
   cleaned <- input$cleaned
-  phases <- unique(cleaned$phase)
+  cycles <- unique(cleaned$cycle)
 
-  # discard unnecessary phases if relevant
+  # discard unnecessary cycles if relevant
   if (method == 'first')
-    cleaned <- cleaned[cleaned$phase == phases[1], ]
+    cleaned <- cleaned[cleaned$cycle == cycles[1], ]
     
   if (method == 'last')
-    cleaned <- cleaned[cleaned$phase == phases[length(phases)], ]
+    cleaned <- cleaned[cleaned$cycle == cycles[length(cycles)], ]
 
   # split by probe to start working
   probe_lists <- split(cleaned, cleaned$probe)
