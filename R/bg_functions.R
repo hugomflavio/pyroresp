@@ -253,13 +253,29 @@ subtract_bg <- function (input, pre, post,
 
   # bg object checks
   check <- method %in% c("pre", "average", "linear", "exponential")
-  if (check && missing(pre)) {
-    stop("method = '", method, "' but argument pre is missing.")
+  if (check) {
+    if (missing(pre)) {
+      stop("method = '", method, "' but argument pre is missing.")
+    }
+    probe_check <- unique(input$cleaned$probe) %in% unique(pre$bg$probe)
+    if (any(!probe_check)) {
+      stop("Could not find probe(s) ",
+           paste(unique(input$cleaned$probe)[!probe_check], collapse = ", "),
+           " in the pre background data.")
+    }
   }
 
   check <- method %in% c("post", "average", "linear", "exponential")
-  if (check && missing(post)) {
-    stop("method = '", method, "' but argument pre is missing.")
+  if (check) {
+    if (missing(post)) {
+      stop("method = '", method, "' but argument post is missing.")
+    }
+    probe_check <- unique(input$cleaned$probe) %in% unique(post$bg$probe)
+    if (any(!probe_check)) {
+      stop("Could not find probe(s) ",
+           paste(unique(input$cleaned$probe)[!probe_check], collapse = ", "),
+           " in the post background data.")
+    }
   }
 
   if (method %in% c("average", "linear", "exponential")) {
