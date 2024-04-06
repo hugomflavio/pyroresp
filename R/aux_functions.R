@@ -1,3 +1,26 @@
+#' suppress incomplete final line warning
+#' 
+#' Data files do not end with an EOL. This is by design, so a warning should
+#' not be thrown. This function catches that specific warning and suppresses
+#' it, while letting other warnings be shown.
+#' 
+#' @param expr the read.table function call
+#' 
+#' @keywords internal
+#' 
+#' @return The outcome of the expression
+#' 
+supress_EOL_warning <- function(expr) {
+	.suppress_eol <- function(w) {
+		if (!grepl("incomplete final line", w$message)) {
+			warning(w)
+		}
+		tryInvokeRestart("muffleWarning")
+	}
+	x <- withCallingHandlers(expr, warning = function(w) .suppress_eol(w))
+	return(x)
+}
+
 #' check that the requested argument value is present in the data
 #' 
 #' @param arg the argument value
@@ -126,8 +149,8 @@ assign_device_names <- function(folder, assign_list, confirmed = FALSE) {
 					"' in file '", i, "'.")
 			}
 		} else {
-			message("Could not find match for device '", device_name,
-							"' [", device_letter , "] in assign_list (file '", i, "'').")
+			message("Could not find match for device '", device_letter,
+							"' (current name: ", device_name , ") in assign_list (file '", i, "').")
 		}
 
 	})

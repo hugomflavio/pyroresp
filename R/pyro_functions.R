@@ -12,14 +12,14 @@
 #' @export
 #'
 read_pyro_raw_file <- function(file, date_format,
-		skip = 0, tz = Sys.timezone()) {
+		skip = 0, tz = Sys.timezone(), encoding = "iso-8859-1") {
 
 	if (length(file) == 0 || !file.exists(file)) {
 		stop("Could not find target file.", call. = FALSE)
 	}
 
 	# identify device and channel name
-	file_header <- readLines(file, n = 20)
+	file_header <- readLines(file, n = 20, encoding = encoding, warn = FALSE)
 	device_line <- file_header[grepl("^#Device", file_header)]
 	device <- stringr::str_extract(device_line,'(?<=Device: )[^\\[]*')
 	device <- sub(" $", "", device)
@@ -35,13 +35,19 @@ read_pyro_raw_file <- function(file, date_format,
 		base_skip <- if (grepl("Oxygen\\.txt$", file)) 24 else 20
 
 		# grab first row to compile col names
-		table_header <- utils::read.table(file, sep = "\t", skip = base_skip,
-								 header = FALSE, strip.white = TRUE, nrows = 1)
+		table_header <- suppress_EOL_warning(
+							read.table(file, sep = "\t", skip = base_skip,
+							 		   header = T, strip.white = TRUE,
+							 		   nrows = 1, fileEncoding = encoding)
+						)
 
 		# grab rest of rows with the actual data
-		output <- utils::read.table(file, sep = "\t",
-									skip = base_skip + 1 + skip,
-									header = FALSE, strip.white = TRUE)
+		output <- suppress_EOL_warning(
+					read.table(file, sep = "\t",
+							   skip = base_skip + 1 + skip,
+							   header = FALSE, strip.white = TRUE,
+							   fileEncoding = encoding)
+				  )
 
 		# grab first and last words of the table headers.
 		a <- gsub(" .*$", "", table_header[1,])
@@ -69,9 +75,11 @@ read_pyro_raw_file <- function(file, date_format,
 								 		"(?<=Calibration offset = )[0-9|\\.]*")
 		names(cal_settings) <- "Calibration offset"
 
-		output <- utils::read.table(file, sep = "\t", skip = 12 + skip,
-									header = FALSE, strip.white = TRUE)
-
+		output <- suppress_EOL_warning(
+					read.table(file, sep = "\t", skip = 12 + skip,
+						 	   header = FALSE, strip.white = TRUE,
+							   fileEncoding = encoding)
+				  )
 		colnames(output) <- c('date_main', 'time_main', 'ds', 'temp', 'status')
 	}
 

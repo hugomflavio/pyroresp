@@ -22,7 +22,8 @@
 #' @export
 #'
 load_experiment <- function(folder, date_format, tz = Sys.timezone(),
-		phases_file = "CoolTerm", probe_info, fix_phases = TRUE) {
+		phases_file = "CoolTerm", probe_info, fix_phases = TRUE,
+		encoding = "iso-8859-1") {
 
 	if (length(folder) == 0 || !dir.exists(folder)) {
 		stop('Could not find target folder')
@@ -67,7 +68,8 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 	}
 
 	output$phases <- phases
-	output$pyro <- load_pyro_data(folder, date_format = date_format, tz = tz)
+	output$pyro <- load_pyro_data(folder, date_format = date_format, tz = tz,
+								  encoding = encoding)
 
 	if (!missing(probe_info)) {
 		output$probe_info <- probe_info
@@ -91,7 +93,7 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 #' @export
 #'
 load_pyro_data <- function(folder, date_format, tz, 
-		type = c("Oxygen", "pH", "Oxygen|pH")) {
+		type = c("Oxygen", "pH", "Oxygen|pH"), encoding = "iso-8859-1") {
 	type <- match.arg(type)
 
 	files <- list.files(paste0(folder, '/ChannelData/'))
@@ -102,7 +104,8 @@ load_pyro_data <- function(folder, date_format, tz,
 
 	source_data <- lapply(files, function(i) {
 		read_pyro_raw_file(paste0(folder, '/ChannelData/', i),
-						   date_format = date_format, tz = tz)
+						   date_format = date_format, tz = tz,
+						   encoding = encoding)
 	})
 
 	very_start <- min(as.POSIXct(sapply(source_data, function(i) {
@@ -365,7 +368,7 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
 #'  \item \code{mmr}: A data frame containing the cycle with the highest
 #' 		metabolic rate recorded.
 #' }
-
+#'
 #' @export
 #'
 process_mr <- function(input, r2 = 0.95, G = 1:4, 
