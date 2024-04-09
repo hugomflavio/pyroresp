@@ -47,7 +47,7 @@ calc_bg <- function(input, method = c('mean', 'first', 'last'),
       # calculate the values for the relevant phase times
       output <- data.frame(phase_time = 1:max(probe$phase_time))
 
-      output$o2_bg <- as.vector(
+      output$o2_bg_delta <- as.vector(
         stats::predict(bg_lm, output, type = "response", se.fit = FALSE)
       )
 
@@ -60,12 +60,12 @@ calc_bg <- function(input, method = c('mean', 'first', 'last'),
       output <- stats::aggregate(x = probe$o2_delta, 
                                  by = list(probe$phase_time), 
                                  FUN = mean, na.rm = TRUE)
-      colnames(output) <- c('phase_time', 'o2_bg')
+      colnames(output) <- c('phase_time', 'o2_bg_delta')
       
       # then, if smoothing is being applied, do averages over time
       if (smoothing > 1) {
         # Bulk of the averages is automatically calculated
-        x <- stats::filter(x = output$o2_bg, 
+        x <- stats::filter(x = output$o2_bg_delta, 
                            filter = rep(1/smoothing, smoothing), 
                            method = "convolution",
                            sides = 2)
@@ -76,7 +76,7 @@ calc_bg <- function(input, method = c('mean', 'first', 'last'),
           # |  usable  range  |
           # |1 - - - i - - - -|2i
           usable_range <- 1:(2 * i - 1)
-          x[i] <- mean(output$o2_bg[usable_range])
+          x[i] <- mean(output$o2_bg_delta[usable_range])
         }
 
         last_value <- tail(which(!is.na(x)), 1)
@@ -108,10 +108,10 @@ calc_bg <- function(input, method = c('mean', 'first', 'last'),
           B <- length(x) - i
           y <- i - B
           usable_range <- y:length(x)
-          x[i] <- mean(output$o2_bg[usable_range])
+          x[i] <- mean(output$o2_bg_delta[usable_range])
         }
 
-        output$o2_bg <- as.numeric(x)
+        output$o2_bg_delta <- as.numeric(x)
       }
       return(output)
     }, smoothing = smoothing)
@@ -120,7 +120,7 @@ calc_bg <- function(input, method = c('mean', 'first', 'last'),
   output <- as.data.frame(data.table::rbindlist(bg_lists, idcol = 'probe'))
 
   units(output$phase_time) <- units(cleaned$phase_time)
-  units(output$o2_bg) <- units(cleaned$o2_delta)
+  units(output$o2_bg_delta) <- units(cleaned$o2_delta)
 
   input$bg <- output
 
@@ -158,7 +158,7 @@ replace_bg <- function(input, replace, with) {
     if (sum(bg$probe == i) > sum(bg$probe == with))
       stop("the cycle for the replacement probe is shorted than the cycle for the_probe to be replaced.")
 
-    bg$o2_bg[bg$probe == i] <- bg$o2_bg[bg$probe == with][1:sum(bg$probe == i)]
+    bg$o2_bg_delta[bg$probe == i] <- bg$o2_bg_delta[bg$probe == with][1:sum(bg$probe == i)]
     # that's some unholy sequential bracketing but I don't
     # recall why I did it so I am letting it stay :)
   }
@@ -187,18 +187,18 @@ extrapolate_bg <- function(input, to) {
   aux <- split(bg, bg$probe)
 
   recipient <- lapply(names(aux), function(P) {
-    m <- lm(as.numeric(o2_bg) ~ as.numeric(phase_time),
+    m <- lm(as.numeric(o2_bg_delta) ~ as.numeric(phase_time),
             data = aux[[P]])
     output <- data.frame(probe = P,
                          phase_time = 1:to)
     units(output$phase_time) <- units(aux[[P]]$phase_time)
-    output$o2_bg <- predict(m, output)
-    output$o2_bg[1:nrow(aux[[P]])] <- aux[[P]]$o2_bg
+    output$o2_bg_delta <- predict(m, output)
+    output$o2_bg_delta[1:nrow(aux[[P]])] <- aux[[P]]$o2_bg_delta
     return(output)
   })
 
   output <- do.call(rbind, recipient)
-  units(output$o2_bg) <- units(bg$o2_bg)
+  units(output$o2_bg_delta) <- units(bg$o2_bg_delta)
 
   input$bg <- output
   return(input)
@@ -301,9 +301,9 @@ subtract_bg <- function (input, pre, post,
     pre$bg <- do.call(rbind, split_pre)
     post$bg <- do.call(rbind, split_post)
 
-    if (units(pre$bg$o2_bg) != units(post$bg$o2_bg)) {
+    if (units(pre$bg$o2_bg_delta) != units(post$bg$o2_bg_delta)) {
       stop("It seems the two background readings are not in the same unit! (",
-        units(pre$bg$o2_bg), " != ", units(post$bg$o2_bg), ").")
+        units(pre$bg$o2_bg_delta), " != ", units(post$bg$o2_bg_delta), ").")
     }
   }
 
@@ -329,7 +329,7 @@ subtract_bg <- function (input, pre, post,
 
   if (method == "average") {
     my_bg <- pre$bg
-    my_bg$o2_bg <- (pre$bg$o2_bg + post$bg$o2_bg) / 2
+    my_bg$o2_bg_delta <- (pre$bg$o2_bg_delta + post$bg$o2_bg_delta) / 2
     input$bg$pre <- pre
     input$bg$post <- post
   }
@@ -342,7 +342,7 @@ subtract_bg <- function (input, pre, post,
 
   if (method == "parallel") {
     my_bg <- input$cleaned[input$cleaned$probe == ref_probe, ]
-    my_bg$o2_bg <- my_bg$o2_delta
+    my_bg$o2_bg_delta <- my_bg$o2_delta
   }
 
   # make equivalent indexes 
@@ -374,37 +374,37 @@ subtract_bg <- function (input, pre, post,
 
   # transfer bg readings
   if (method == "none") {
-    input$cleaned$o2_bg <- 0
-    units(input$cleaned$o2_bg) <- units(input$cleaned$o2)
+    input$cleaned$o2_bg_delta <- 0
+    units(input$cleaned$o2_bg_delta) <- units(input$cleaned$o2_delta)
   } else {
     link <- match(input$cleaned$tmp_index, my_bg$tmp_index)
-    input$cleaned$o2_bg <- my_bg$o2_bg[link]
+    input$cleaned$o2_bg_delta <- my_bg$o2_bg_delta[link]
     input$cleaned$tmp_index <- NULL
     
-    if (any(is.na(input$cleaned$o2_bg)))
+    if (any(is.na(input$cleaned$o2_bg_delta)))
       warning("Some measurement phases are longer than the background.",
         " Discarding overextended points.", 
         immediate. = TRUE, call. = FALSE)
 
-    input$cleaned <- input$cleaned[!is.na(input$cleaned$o2_bg), ]
+    input$cleaned <- input$cleaned[!is.na(input$cleaned$o2_bg_delta), ]
   }
 
   #-----------------------------------------------------------------------------
-  input$cleaned$o2_bg_delta <- input$cleaned$o2_bg - input$cleaned$o2_bg[1]
-  input$cleaned$o2_cor <- input$cleaned$o2 - input$cleaned$o2_bg
+  input$cleaned$o2_cordelta <- input$cleaned$o2_delta - input$cleaned$o2_bg_delta
 
-  aux <- split(input$cleaned, paste0(input$cleaned$probe, input$cleaned$phase))
-  aux <- lapply(aux, function(x) {
-    x$o2_cordelta <- x$o2_cor - x$o2_cor[1]
-    return(x)
-  })
+  # aux <- split(input$cleaned, paste0(input$cleaned$probe, input$cleaned$phase))
+  # aux <- lapply(aux, function(x) {
+  #   x$o2_cordelta <- x$o2_cor - x$o2_cor[1]
+  #   return(x)
+  # })
 
-  output <- as.data.frame(data.table::rbindlist(aux))
-  output <- transfer_attributes(input$cleaned, output)
-  attributes(output)$correction_method <- method
+  # output <- as.data.frame(data.table::rbindlist(aux))
+  # output <- transfer_attributes(input$cleaned, output)
+  # attributes(output)$correction_method <- method
+ attributes(input$cleaned)$correction_method <- method
 
-  input$cleaned <- output
-  
+  # input$cleaned <- output
+
   return(input)
 }
 
@@ -424,8 +424,8 @@ calc_linear_bg <- function(input, pre, post) {
 
   my_bg <- lapply(unique(input$cleaned$probe), function(probe) {
     # cat(probe, "\n")
-    pre_line <- pre$bg$o2_bg[pre$bg$probe == probe]
-    post_line <- post$bg$o2_bg[post$bg$probe == probe]
+    pre_line <- pre$bg$o2_bg_delta[pre$bg$probe == probe]
+    post_line <- post$bg$o2_bg_delta[post$bg$probe == probe]
 
     if (length(pre_line) != length(post_line)) {
       warning("The pre-bg and post-bg in probe ", probe, 
@@ -460,13 +460,13 @@ calc_linear_bg <- function(input, pre, post) {
 
   my_bg_simplified <- lapply(names(my_bg), function(probe) {
     x <- suppressMessages(reshape2::melt(my_bg[[probe]]))
-    colnames(x) <- c("cycle", "o2_bg")
+    colnames(x) <- c("cycle", "o2_bg_delta")
     x$phase_time <- 1:nrow(my_bg[[probe]])
     x$cycle <- as.numeric(sub("V", "", x$cycle))
     x$probe <- probe
 
     units(x$phase_time) <- units(pre$bg$phase_time)
-    units(x$o2_bg) <- units(pre$bg$o2_bg)
+    units(x$o2_bg_delta) <- units(pre$bg$o2_bg_delta)
     return(x)
   })
 

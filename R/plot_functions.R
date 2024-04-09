@@ -11,7 +11,7 @@
 #' 
 plot_bg <- function(input, probes, linewidth = 1.5) {
 	# ggplot variables
-	o2_delta <- cycle <- o2_bg <- phase_time <- NULL
+	o2_delta <- cycle <- o2_bg_delta <- phase_time <- NULL
 
 	if(is.null(input$bg))
 		stop("Could not find a bg object in the input")
@@ -26,11 +26,12 @@ plot_bg <- function(input, probes, linewidth = 1.5) {
 	input$probe <- factor(input$idprobe, levels = input$probe_info$probe)
 	
 	p <- ggplot2::ggplot(data = input$cleaned, ggplot2::aes(x = phase_time))
+
 	p <- p + ggplot2::geom_line(ggplot2::aes(y = o2_delta, 
 								group = cycle,
 								colour = cycle))
 	p <- p + ggplot2::geom_line(data = input$bg, 
-								ggplot2::aes(y = o2_bg),
+								ggplot2::aes(y = o2_bg_delta),
 								col = 'red',
 								linewidth = linewidth)
 	p <- p + ggplot2::theme_bw()
@@ -193,7 +194,7 @@ plot_meas <- function(input, cycles, probes,
 #' 
 plot_deltas <- function(input, cycles, probes, verbose = TRUE) {
 	# ggplot variables
-	o2_delta <- o2_cordelta <- o2_bg <- date_time <- NULL
+	o2_delta <- o2_cordelta <- o2_bg_delta <- date_time <- NULL
 	phase <- plot_this <- NULL
 
 	cleaned <- input$cleaned
@@ -217,7 +218,7 @@ plot_deltas <- function(input, cycles, probes, verbose = TRUE) {
 
 	p <- ggplot2::ggplot(data = cleaned, 
 		ggplot2::aes(x = date_time, Group = phase))
-	p <- p + ggplot2::geom_path(ggplot2::aes(y = o2_bg, col = 'Background'))
+	p <- p + ggplot2::geom_path(ggplot2::aes(y = o2_bg_delta, col = 'Background'))
 	p <- p + ggplot2::geom_path(ggplot2::aes(y = o2_delta, 
 										     col = 'Raw'))
 	p <- p + ggplot2::geom_path(ggplot2::aes(y = o2_cordelta,
@@ -390,7 +391,6 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 	}
 	
 	if (!is.null(input$mmr)) {
-
 		mmr <- input$mmr
 		mmr$idprobe <- paste0(mmr$id, " (", mmr$probe, ")")
 		mmr$idprobe <- factor(mmr$idprobe, levels = idprobe_levels)
@@ -408,7 +408,7 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 	
 	p <- p + ggplot2::theme_bw()
 	p <- p + ggplot2::facet_wrap(idprobe ~ ., ncol = 1)
-	p <- p + ggplot2::labs(y = "M[O[2]]", x = '', linetype = "SMR method")
+	p <- p + ggplot2::labs(y = "\u1E40[O[2]]", x = '', linetype = "SMR method")
 	return(p)	
 }
 
@@ -453,7 +453,7 @@ plot_smr <- function(input, probes) {
 		fill = "white", colour = "grey", binwidth = 0.1)
 	p <- p + ggplot2::geom_vline(data = aux, ggplot2::aes(xintercept = value,
 														  linetype = Method))
-	p <- p + ggplot2::labs(x = "M[O[2]]")
+	p <- p + ggplot2::labs(x = "\u1E40[O[2]]")
 	p <- p + ggplot2::facet_grid(idprobe ~ .)
 	p
 }
@@ -548,7 +548,7 @@ plot_rolling_mr <- function(input, probes, cycles) {
 		sec.axis = ggplot2::sec_axis(trans = axis_link, name = "R2")
 	)
 
-	p <- p + ggplot2::labs(y = units::make_unit_label("M[O[2]]", o2_unit),
+	p <- p + ggplot2::labs(y = units::make_unit_label("\u1E40[O[2]]", o2_unit),
 						   x = "Time within phase")
 	p <- p + ggplot2::facet_wrap(idprobecycle ~ ., ncol = 1)
 	p
@@ -575,7 +575,7 @@ plot_experiment <- function(input, cycles, probe, verbose = TRUE) {
 		p_pre <- p_pre + ggplot2::labs(title = 'Pre-background')
 	} else {
 		p_pre <- patchwork::wrap_elements(
-			grid::textGrob('Pre-bg was not recorded'))
+			grid::textGrob('Pre-bg was not included'))
 	}
 
 	if (!is.null(input$bg$post)) {
@@ -584,7 +584,7 @@ plot_experiment <- function(input, cycles, probe, verbose = TRUE) {
 		p_post <- p_post + ggplot2::labs(title = 'Post-background')
 	} else {
 		p_post <- patchwork::wrap_elements(
-			grid::textGrob('Post-bg was not recorded'))
+			grid::textGrob('Post-bg was not included'))
 	}
 
 	# if (verbose) message('Plotting measurements')
