@@ -9,7 +9,7 @@ read_pyro_raw_file(
   date_format,
   skip = 0,
   tz = Sys.timezone(),
-  encoding = "iso-8859-1"
+  encoding = "ISO-8859-1"
 )
 }
 \arguments{

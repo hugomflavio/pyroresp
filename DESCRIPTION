@@ -24,6 +24,7 @@ Imports:
     reshape2,
     respirometry,
     stats,
+    stringi,
     stringr,
     utils
 Suggests:
