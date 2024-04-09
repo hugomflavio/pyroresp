@@ -283,11 +283,11 @@ plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 
 
 	if (r2) {
-		slope_mean <- mean(slopes$slope_cor, na.rm = TRUE)
-		r2_mean <- 0.5
-		mean_dif <- r2_mean - slope_mean
 		aux <- range(slopes$slope_cor, na.rm = TRUE)
+		# artificially raise centre so R2 tends to stay about the slopes
+		slope_centre <- aux[1] + (((aux[2] - aux[1]) / 2) * 1.3)
 		slope_range <- aux[2] - aux[1]
+		r2_centre <- 0.5
 		r2_range <- 1
 
 		if (slope_range == 0 | r2_range == 0)
@@ -295,12 +295,12 @@ plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 		else
 			compress_factor <- slope_range/r2_range
 
-		data.link <- function(x, a = r2_mean, b = slope_mean, 
+		data.link <- function(x, a = r2_centre, b = slope_centre,
 							  c_factor = compress_factor) {
 			b + ((x - a) * c_factor) # = y
 		}
 
-		axis_link <- function(y, a = r2_mean, b = slope_mean, 
+		axis_link <- function(y, a = r2_centre, b = slope_centre,
 							  c_factor = compress_factor) {
 		  (y + a * c_factor - b) / c_factor # = x
 		}
