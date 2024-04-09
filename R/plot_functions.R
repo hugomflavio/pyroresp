@@ -229,7 +229,7 @@ plot_deltas <- function(input, cycles, probes, verbose = TRUE) {
 	p <- p + ggplot2::facet_wrap(.~idprobe)
 	p <- p + ggplot2::labs(x = "", y = expression(Delta~O[2]), 
 						   title = paste('Correction method used:',
-						 				 attributes(input)$correction_method),
+						 				 attributes(input$cleaned)$correction_method),
 						   colour = 'Values:', linetype = 'Values:')
 	
 	return(p)
