@@ -20,7 +20,7 @@ read_pyro_raw_file <- function(file, date_format,
 		stop("Could not find target file.", call. = FALSE)
 	}
 
-	if(encoding %in% stringi::stri_enc_list()) {
+	if(!(encoding %in% stringi::stri_enc_list())) {
 		stop("encoding argument not recognized. See stringi::stri_enc_list()",
 			 " for a complete list of recognized values")
 	}

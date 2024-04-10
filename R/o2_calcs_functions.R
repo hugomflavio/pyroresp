@@ -38,10 +38,11 @@ clean_meas <- function(input, wait = 0, auto_cut_last = FALSE){
     # Removing the final measurement phase if necessary or forced (tail error)
     rows_per_phase <- table(trimmed_db$phase)
 
-    if (length(rows_per_phase) > 1)
+    if (length(rows_per_phase) > 1) {
       mean_rows_per_phase <- mean(rows_per_phase[-length(rows_per_phase)])
-    else
+    } else {
       mean_rows_per_phase <- rows_per_phase
+    }
 
     if (tail(rows_per_phase, 1) < wait | auto_cut_last) {
       all_but_last <- trimmed_db$phase != tail(levels(trimmed_db$phase), 1)
@@ -51,7 +52,7 @@ clean_meas <- function(input, wait = 0, auto_cut_last = FALSE){
 
 
     # cut off first n rows from 'M' phase
-    if(wait != 0){
+    if (nrow(trimmed_db) > 0 && wait != 0) {
       # the code below grabs the 1:nrow vector, breaks it out by phase, 
       # and then uses tail() with a negative n to grab all numbers but
       # the first `wait` that show up for each phase.
@@ -63,33 +64,40 @@ clean_meas <- function(input, wait = 0, auto_cut_last = FALSE){
     }
 
     # reset rownames
-    row.names(trimmed_db) <- 1:nrow(trimmed_db)
+    if (nrow(trimmed_db) > 0) {
+      row.names(trimmed_db) <- 1:nrow(trimmed_db)
 
-    # and now, by phase, calculate the passing time and 
-    # store the start and end points of that measurement
-    aux <- split(trimmed_db, trimmed_db$phase)
+      # and now, by phase, calculate the passing time and 
+      # store the start and end points of that measurement
+      aux <- split(trimmed_db, trimmed_db$phase)
 
-    aux <- aux[sapply(aux, nrow) > 0]
+      aux <- aux[sapply(aux, nrow) > 0]
 
-    aux <- lapply(aux, function(x) {
-      x$Start.Meas <- x$Real.Time[1]
-      x$End.Meas <- x$Real.Time[nrow(x)]
-      x$phase_time <- as.numeric(difftime(
-                        time1 = x$date_time, 
-                        time2 = x$date_time[1], 
-                        units = 's'
-                      ))
-      units(x$phase_time) <- "s"
+      aux <- lapply(aux, function(x) {
+        x$Start.Meas <- x$Real.Time[1]
+        x$End.Meas <- x$Real.Time[nrow(x)]
+        x$phase_time <- as.numeric(difftime(
+                          time1 = x$date_time, 
+                          time2 = x$date_time[1], 
+                          units = 's'
+                        ))
+        units(x$phase_time) <- "s"
 
-      return(x)
-    })
-    trimmed_db <- as.data.frame(data.table::rbindlist(aux))
- 
+        return(x)
+      })
+      trimmed_db <- as.data.frame(data.table::rbindlist(aux))
+    }
+
     return(trimmed_db)
   })
 
   output <- as.data.frame(data.table::rbindlist(recipient))
 
+  if (nrow(output) == 0) {
+    stop("No measurement data found. Is wait too long? ",
+         "Is the phase data correct?")
+  }
+  
   units(wait) <- "seconds"
   attributes(output)$wait_time <- wait
 
