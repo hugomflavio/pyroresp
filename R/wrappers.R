@@ -23,7 +23,7 @@
 #'
 load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 		phases_file = "CoolTerm", probe_info, fix_phases = TRUE,
-		encoding = "iso-8859-1") {
+		encoding = "ISO-8859-1") {
 
 	if (length(folder) == 0 || !dir.exists(folder)) {
 		stop('Could not find target folder')
@@ -93,7 +93,7 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 #' @export
 #'
 load_pyro_data <- function(folder, date_format, tz, 
-		type = c("Oxygen", "pH", "Oxygen|pH"), encoding = "iso-8859-1") {
+		type = c("Oxygen", "pH", "Oxygen|pH"), encoding = "ISO-8859-1") {
 	type <- match.arg(type)
 
 	files <- list.files(paste0(folder, '/ChannelData/'))
