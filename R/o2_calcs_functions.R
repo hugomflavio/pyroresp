@@ -4,6 +4,9 @@
 #' @param wait integer: the number of first rows for each measurement phase (M)
 #'  which should be reassigned to the wait phase (W). Note: If your
 #'  phase-tracking device already assigns a wait phase, set this to 0.
+#' @param cycle_max integer: Max allowed length (in number of rows) that each
+#'  cycle is allowed to have. Defaults to Inf (i.e. the whole cycle is used for
+#'  metabolic rate estimations).
 #' @param auto_cut_last Should the last recorded phase be automatically cut?
 #'  useful if the experiment was terminated mid-measurement.
 #' 
@@ -11,8 +14,11 @@
 #' 
 #' @export
 #' 
-clean_meas <- function(input, wait = 0, auto_cut_last = FALSE){
-
+clean_meas <- function(input, wait = 0, cycle_max = Inf, auto_cut_last = FALSE){
+  if (wait > cycle_max) {
+    stop("wait must not be bigger than cycle_max.")
+  }
+  
   input$date <- as.Date(input$date_time)
   input$real_time <- chron::times(strftime(input$date_time, "%H:%M:%S"))
 
@@ -51,14 +57,16 @@ clean_meas <- function(input, wait = 0, auto_cut_last = FALSE){
     }
 
 
-    # cut off first n rows from 'M' phase
+    # cut off first n rows from 'M' phases
     if (nrow(trimmed_db) > 0 && wait != 0) {
       # the code below grabs the 1:nrow vector, breaks it out by phase, 
-      # and then uses tail() with a negative n to grab all numbers but
-      # the first `wait` that show up for each phase.
+      # and then selects only the rows that fall within the desired
+      # measurement periods.
       index <- unlist(tapply(X = 1:nrow(trimmed_db), 
                              INDEX = trimmed_db$phase, 
-                             FUN = tail, -(wait)),
+                             FUN = function(x) {
+                                x[(wait + 1):min(length(x), cycle_max)]
+                             }),
                       use.names = FALSE)
       trimmed_db <- trimmed_db[index, ]
     }

@@ -137,7 +137,7 @@ load_pyro_data <- function(folder, date_format, tz,
 #' Perform standard processing operations to the pyro/phases files.
 #' 
 #' @param input The output of \code{\link{load_experiment}}
-#' @param wait The number of seconds to discard as wait phase
+#' @inheritParams clean_meas
 #' @param convert_o2_unit_to The o2 unit desired for the final results
 #' @param patch_NAs Logical. Should NA values found in the raw data be patched?
 #' 	Defaults to TRUE.
@@ -162,7 +162,7 @@ load_pyro_data <- function(folder, date_format, tz,
 #' 
 #' @export 
 #'
-process_experiment <- function(input, wait, convert_o2_unit_to,
+process_experiment <- function(input, wait, cycle_max = Inf, convert_o2_unit_to,
 		patch_NAs = TRUE, patch_method = c("linear", "before", "after"),
 		min_temp, max_temp, start_time, stop_time, from_cycle, to_cycle, 
 		verbose = TRUE) {
@@ -198,7 +198,8 @@ process_experiment <- function(input, wait, convert_o2_unit_to,
   							  probe_info = input$probe_info)
 
 	if (verbose) message("M: Removing flush and wait values.")
-  	input$cleaned <- clean_meas(input = input$melted, wait = wait)
+  	input$cleaned <- clean_meas(input = input$melted, wait = wait,
+  								cycle_max = cycle_max)
 
 	if (verbose) message("M: Calculating air saturation")
 
