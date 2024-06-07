@@ -2,6 +2,7 @@
 #'
 #' @docType package
 #' @name pyroresp
+#' @import graphics
 #' @import patchwork
 #' @import stats
 #' @import units
