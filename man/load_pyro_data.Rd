@@ -9,7 +9,7 @@ load_pyro_data(
   date_format,
   tz,
   type = c("Oxygen", "pH", "Oxygen|pH"),
-  encoding = "iso-8859-1"
+  encoding = "ISO-8859-1"
 )
 }
 \arguments{

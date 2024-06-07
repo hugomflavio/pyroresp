@@ -11,7 +11,7 @@ load_experiment(
   phases_file = "CoolTerm",
   probe_info,
   fix_phases = TRUE,
-  encoding = "iso-8859-1"
+  encoding = "ISO-8859-1"
 )
 }
 \arguments{

@@ -4,7 +4,7 @@
 \alias{clean_meas}
 \title{Prepare imported measurements for further analyses}
 \usage{
-clean_meas(input, wait = 0, auto_cut_last = FALSE)
+clean_meas(input, wait = 0, cycle_max = Inf, auto_cut_last = FALSE)
 }
 \arguments{
 \item{input}{the data frame containing imported oxygen measurements}
@@ -12,6 +12,10 @@ clean_meas(input, wait = 0, auto_cut_last = FALSE)
 \item{wait}{integer: the number of first rows for each measurement phase (M)
 which should be reassigned to the wait phase (W). Note: If your
 phase-tracking device already assigns a wait phase, set this to 0.}
+
+\item{cycle_max}{integer: Max allowed length (in number of rows) that each
+cycle is allowed to have. Defaults to Inf (i.e. the whole cycle is used for
+metabolic rate estimations).}
 
 \item{auto_cut_last}{Should the last recorded phase be automatically cut?
 useful if the experiment was terminated mid-measurement.}

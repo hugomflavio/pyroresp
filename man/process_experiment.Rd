@@ -7,6 +7,7 @@
 process_experiment(
   input,
   wait,
+  cycle_max = Inf,
   convert_o2_unit_to,
   patch_NAs = TRUE,
   patch_method = c("linear", "before", "after"),
@@ -22,7 +23,13 @@ process_experiment(
 \arguments{
 \item{input}{The output of \code{\link{load_experiment}}}
 
-\item{wait}{The number of seconds to discard as wait phase}
+\item{wait}{integer: the number of first rows for each measurement phase (M)
+which should be reassigned to the wait phase (W). Note: If your
+phase-tracking device already assigns a wait phase, set this to 0.}
+
+\item{cycle_max}{integer: Max allowed length (in number of rows) that each
+cycle is allowed to have. Defaults to Inf (i.e. the whole cycle is used for
+metabolic rate estimations).}
 
 \item{convert_o2_unit_to}{The o2 unit desired for the final results}
 
