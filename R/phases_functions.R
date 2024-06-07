@@ -385,8 +385,9 @@ merge_pyro_phases <- function(input) {
 							call. = FALSE, immediate. = TRUE)
 				}
 
-				pyr[, new_col] <- factor(pyr[, new_col], 
-											  levels = unique(pyr[, new_col]))
+				# not sure why I was turning this into a factor before...
+				# pyr[, new_col] <- factor(pyr[, new_col], 
+				# 							  levels = unique(pyr[, new_col]))
 			
 				# export pyrodata object to outside of 
 				# the lapply loop to save changes
