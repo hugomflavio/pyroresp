@@ -96,8 +96,10 @@ conv_w_to_ml <- function(w, d = 1) {
 #' NOTE: This function will modify the files in your data folder!
 #' 
 #' @inheritParams load_experiment
-#' @param assign_list A list of format device_letter = device_name for the
-#'  devices to rename based on their letter.
+#' @param old_name The name of the device to be substituted.
+#' @param new_name The new name to assign to the device.
+#' @param old_letter The letter of the device to be substituted. To be used
+#' 	instead of old_name, if preferable.
 #' @param confirmed Logical: Have you reviewed the changes and confirm you
 #'  want to apply them? Defaults to FALSE to perform a dry run.
 #' 
@@ -105,7 +107,10 @@ conv_w_to_ml <- function(w, d = 1) {
 #' 
 #' @export
 #' 
-assign_device_names <- function(folder, assign_list, confirmed = FALSE) {
+assign_device_names <- function(folder, old_name, new_name, old_letter, 
+																confirmed = FALSE, encoding = "ISO-8859-1") {
+	found_none <- TRUE
+
 	if (length(folder) == 0 || !dir.exists(folder)) {
 		stop('Could not find target folder')
 	}
@@ -114,59 +119,63 @@ assign_device_names <- function(folder, assign_list, confirmed = FALSE) {
 		stop('"folder" should be a string of length 1.')		
 	}
 
+	if (!missing(old_name) & !missing(old_letter)) {
+		stop("Use only one of old_name or old_letter")
+	}
+
 	files <- list.files(paste0(folder, '/ChannelData/'))
 
 	file_link <- grepl("Oxygen|pH", files)
 
 	if (all(!file_link)) {
-		stop('No probe files found')
+		stop('No probe files found in specified folder')
 	}
 
 	files <- files[file_link]
 
-	capture <- lapply(files, function(i) {
+	capture <- lapply(files, function(i, old_name, new_name, old_letter) {
 		the_file <- paste0(folder, '/ChannelData/', i)
 
-		x <- suppressWarnings(readLines(the_file))
+		x <- readLines(the_file, warn = FALSE)
+		x <- stringr::str_conv(x, encoding = encoding)
 
 		r <- grep("^#Device", x)[1]
 
-		# identify device name and letter
-		device_name <- stringr::str_extract(x[r],'(?<=Device: )[^\\[]*')
-		device_name <- sub(" $", "", device_name)
+		# identify old device name and letter
+		old_device_name <- stringr::str_extract(x[r],'(?<=Device: )[^\\[]*')
+		old_device_name <- sub(" $", "", old_device_name)
 
-		device_letter <- 	stringr::str_extract(x[r],'(?<=\\[)[^\\]]*')
+		old_device_letter <- 	stringr::str_extract(x[r],'(?<=\\[)[^\\]]*')
 
-		if (device_letter %in% names(assign_list)) {
-			x[r] <- sub(device_name, assign_list[[device_letter]], x[r])
+		name_check <- !missing(old_name) && old_name == old_device_name
+		letter_check <- !missing(old_letter) && old_letter == old_device_letter
+		if (name_check | letter_check) {
+			found_none <<- FALSE
+			x[r] <- sub(old_device_name, new_name, x[r])
 			if (confirmed) {
 				writeLines(x, the_file)
-				message("Renamed device '", device_name, "' [", device_letter ,
-					"] to '",	assign_list[[device_letter]], "' in file '", i, "'.")
+				message("Renamed device '", old_device_name, "' [", old_device_letter,
+					"] to '",	new_name, "' [", old_device_letter,
+					"] in file '", i, "'.")
 			} else {
-				message("Would have renamed device '", device_name, "' [",
-					device_letter , "] to '", assign_list[[device_letter]],
-					"' in file '", i, "'.")
+				message("Would have renamed device '", old_device_name, "' [",
+					old_device_letter , "] to '", new_name,
+					"' [", old_device_letter,
+					"] in file '", i, "'.")
 			}
-		} else {
-			message("Could not find match for device '", device_letter,
-							"' (current name: ", device_name , ") in assign_list (file '", i, "').")
 		}
+	}, old_name = old_name, new_name = new_name, old_letter = old_letter)
 
-	})
+	if (found_none) {
+		message("No devices were found that matched the old name or letter.")
+	}
 
-	if (!confirmed) {
+	if (!confirmed & !found_none) {
 		warning("No changes were made. Review the messages above.\n",
 						"If you wish to apply those changes, run again with ",
 						"confirmed = TRUE.", call. = FALSE)
 	}
 }
-
-
-from <- data.frame(a = 1, b = 2)
-to <- data.frame(c = 3)
-attributes(to)$test <- "test?"
-
 
 #' helper function to avoid attribute loss
 #' caused by the split->lapply->rbind process
@@ -188,7 +197,6 @@ transfer_attributes <- function(from, to) {
 			attributes(to)[i] <- attributes(from)[i]
 		}
 	}
-
 	return(to)
 }
 

@@ -4,16 +4,30 @@
 \alias{assign_device_names}
 \title{Assign device names after completing experiment}
 \usage{
-assign_device_names(folder, assign_list, confirmed = FALSE)
+assign_device_names(
+  folder,
+  old_name,
+  new_name,
+  old_letter,
+  confirmed = FALSE,
+  encoding = "ISO-8859-1"
+)
 }
 \arguments{
 \item{folder}{the path to the folder where the experiment data is stored}
 
-\item{assign_list}{A list of format device_letter = device_name for the
-devices to rename based on their letter.}
+\item{old_name}{The name of the device to be substituted.}
+
+\item{new_name}{The new name to assign to the device.}
+
+\item{old_letter}{The letter of the device to be substituted. To be used
+instead of old_name, if preferable.}
 
 \item{confirmed}{Logical: Have you reviewed the changes and confirm you
 want to apply them? Defaults to FALSE to perform a dry run.}
+
+\item{encoding}{the encoding of the source file. Defaults to "iso-8859-1",
+which is the encoding used by the pyro workbench software.}
 }
 \value{
 Nothing. Used for side effects.
