@@ -19,6 +19,7 @@ Depends: R (>= 4.0.0),
 Imports: 
     chron, 
     data.table,
+    graphics,
     ggplot2,
     mclust, 
     reshape2,
