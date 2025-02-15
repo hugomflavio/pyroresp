@@ -1,39 +1,55 @@
 #' Plot background readings
-#' 
+#'
 #' @param input An experiment list with calculated background.
 #' 	The output of \code{\link{calc_bg}}.
 #' @param linewidth The width of the averaged/linear bg.
 #' @inheritParams plot_meas
-#' 
+#'
 #' @return a ggplot object
-#' 
+#'
 #' @export
-#' 
+#'
 plot_bg <- function(input, probes, linewidth = 1.5) {
 	# ggplot variables
 	o2_delta <- cycle <- o2_bg_delta <- phase_time <- NULL
 
-	if(is.null(input$bg))
+	if(is.null(input$bg)) {
 		stop("Could not find a bg object in the input")
+	}
 
 	if (!missing(probes)) {
-		probes <- check_arg_in_data(probes, input$cleaned$probe, "probes")
-		input$cleaned <- input$cleaned[input$cleaned$probe %in% probes, ]
+		probes <- check_arg_in_data(probes, input$trimmed$probe, "probes")
+		input$trimmed <- input$trimmed[input$trimmed$probe %in% probes, ]
 		input$bg <- input$bg[input$bg$probe %in% probes, ]
 	}
 
-	input$cleaned$cycle <- as.factor(input$cleaned$cycle)
+	input$trimmed$cycle <- as.factor(input$trimmed$cycle)
 	input$probe <- factor(input$idprobe, levels = input$probe_info$probe)
 	
-	p <- ggplot2::ggplot(data = input$cleaned, ggplot2::aes(x = phase_time))
+	bg_lines <- lapply(1:nrow(input$bg), function(i) {
+		probe <- input$bg$probe[i]
+		link <- input$trimmed$probe == probe
+		nsecs <- max(input$trimmed$phase_time[link])
+		output <- data.frame(probe = probe,
+		                     phase_time = c(0, nsecs),
+		                     o2_delta = c(0, input$bg$slope[i] * nsecs))
+		units(output$phase_time) <- units(input$trimmed$phase_time)
+		units(output$o2_delta) <- units(input$trimmed$o2_delta)
+		return(output)
+	})
+	bg_lines <- do.call(rbind, bg_lines)
 
-	p <- p + ggplot2::geom_line(ggplot2::aes(y = o2_delta, 
-								group = cycle,
-								colour = cycle))
-	p <- p + ggplot2::geom_line(data = input$bg, 
-								ggplot2::aes(y = o2_bg_delta),
-								col = 'red',
-								linewidth = linewidth)
+	p <- ggplot2::ggplot(data = input$trimmed)
+	p <- p + ggplot2::aes(x = phase_time, y = o2_delta)
+
+	p <- p + ggplot2::geom_line(ggplot2::aes(group = cycle, colour = cycle))
+	p <- p + ggplot2::geom_line(data = bg_lines, colour = 'red',
+															linewidth = linewidth)
+	if (!is.null(input$sim_params)) {
+		p <- plot_sim_watermark(p = p,
+						   x = input$trimmed$phase_time,
+						   y = input$trimmed$o2_delta)
+	}
 	p <- p + ggplot2::theme_bw()
 	p <- p + ggplot2::labs(x = "Phase time", y = "Delta~O[2]")
 	p <- p + ggplot2::facet_wrap(. ~ probe, ncol = 4)
@@ -42,7 +58,7 @@ plot_bg <- function(input, probes, linewidth = 1.5) {
 }
 
 #' Plot raw measurements of oxygen and temp
-#' 
+#'
 #' @param input An experiment list with melted oxygen and temperature data.
 #' 	The output of \code{\link{process_experiment}} or
 #' 	\code{\link{melt_resp}}.
@@ -52,9 +68,9 @@ plot_bg <- function(input, probes, linewidth = 1.5) {
 #' @param verbose should argument warnings be displayed?
 #'
 #' @return A ggplot object
-#' 
+#'
 #' @export
-#' 
+#'
 plot_meas <- function(input, cycles, probes,
 					  show_temp = FALSE, verbose = TRUE) {
 	# ggplot variables
@@ -63,7 +79,7 @@ plot_meas <- function(input, cycles, probes,
 
 	meas <- input$melted
 	meas$idprobe <- paste0(meas$id, " (", meas$probe, ")")
-	idprobe_levels <-paste0(input$probe_info$id, 
+	idprobe_levels <-paste0(input$probe_info$id,
 							" (", input$probe_info$probe, ")")
 	meas$idprobe <- factor(meas$idprobe, levels = idprobe_levels)
 	
@@ -105,9 +121,9 @@ plot_meas <- function(input, cycles, probes,
 			# now extract start and end of phase
 			aux2 <- lapply(aux2, function(the_phase) {
 				data.frame(idprobe = the_idprobe,
-						   xmin = the_phase$date_time[1], 
-						   xmax = the_phase$date_time[nrow(the_phase)], 
-						   ymin = -Inf, 
+						   xmin = the_phase$date_time[1],
+						   xmax = the_phase$date_time[nrow(the_phase)],
+						   ymin = -Inf,
 						   ymax = Inf)
 			})
 			return(as.data.frame(data.table::rbindlist(aux2)))
@@ -122,13 +138,13 @@ plot_meas <- function(input, cycles, probes,
 	p <- ggplot2::ggplot(data = meas)
 
 	if (paint_flush) {
-		p <- p + ggplot2::geom_rect(data = flush_times, 
-									ggplot2::aes(xmin = xmin, xmax = xmax, 
+		p <- p + ggplot2::geom_rect(data = flush_times,
+									ggplot2::aes(xmin = xmin, xmax = xmax,
 												 ymin = ymin, ymax = ymax),
 									fill = "black", alpha = 0.1)
 	}
 
-	p <- p + ggplot2::geom_line(ggplot2::aes(x = date_time, 
+	p <- p + ggplot2::geom_line(ggplot2::aes(x = date_time,
 											 y = o2, group = phase,
 											 colour = "o2"))
 	p <- p + ggplot2::theme_bw()
@@ -150,30 +166,30 @@ plot_meas <- function(input, cycles, probes,
 			compress_factor <- ox_range/temp_range
 		}
 
-		data.link <- function(x, a = temp_mid, 
+		data.link <- function(x, a = temp_mid,
 							  b = ox_mid, c_factor = compress_factor) {
 			b + ((x - a) * c_factor) # = y
 		}
 
-		axis_link <- function(y, a = temp_mid, 
+		axis_link <- function(y, a = temp_mid,
 							  b = ox_mid, c_factor = compress_factor) {
 		  (y + a * c_factor - b) / c_factor # = x
 		}
 
 		p <- p + ggplot2::geom_line(ggplot2::aes(x = date_time,
-												 y = data.link(temp), 
+												 y = data.link(temp),
 												 group = phase,
 												 colour = "temp"))
  		p <- p + ggplot2::scale_y_continuous(
-			sec.axis = ggplot2::sec_axis(trans = axis_link, 
+			sec.axis = ggplot2::sec_axis(trans = axis_link,
 		 	name = units::make_unit_label("Temperature", temp_unit))
 								)
 		p <- p + ggplot2::scale_colour_manual(values = c("royalblue", "red"))
 	} else {
-		p <- p + ggplot2::scale_colour_manual(values = "royalblue") 
+		p <- p + ggplot2::scale_colour_manual(values = "royalblue")
 	}
 
-	p <- p + ggplot2::theme(legend.position = "none") 
+	p <- p + ggplot2::theme(legend.position = "none")
 	p <- p + ggplot2::labs(y = units::make_unit_label("O[2]", o2_unit),
 						   x = "Time")
 	p <- p + ggplot2::facet_wrap(idprobe ~ ., ncol = 1)
@@ -182,78 +198,75 @@ plot_meas <- function(input, cycles, probes,
 }
 
 #' Plot the calculated oxygen deltas
-#' 
+#'
 #' @param input An experiment list with calculated deltas.
 #' 	The output of \code{\link{process_experiment}} or
 #' 	\code{\link{calc_delta}}.
 #' @inheritParams plot_meas
-#' 
+#'
 #' @return a ggplot object
-#' 
+#'
 #' @export
-#' 
+#'
 plot_deltas <- function(input, cycles, probes, verbose = TRUE) {
 	# ggplot variables
 	o2_delta <- o2_cordelta <- o2_bg_delta <- date_time <- NULL
 	phase <- plot_this <- NULL
 
-	cleaned <- input$cleaned
-	cleaned$idprobe <- paste0(cleaned$id, " (", cleaned$probe, ")")
-	idprobe_levels <-paste0(input$probe_info$id, 
+	trimmed <- input$trimmed
+	trimmed$idprobe <- paste0(trimmed$id, " (", trimmed$probe, ")")
+	idprobe_levels <-paste0(input$probe_info$id,
 							" (", input$probe_info$probe, ")")
-	cleaned$idprobe <- factor(cleaned$idprobe, levels = idprobe_levels)
+	trimmed$idprobe <- factor(trimmed$idprobe, levels = idprobe_levels)
 
 	if (!missing(cycles)) {
-		cycles <- check_arg_in_data(cycles, cleaned$cycle,
+		cycles <- check_arg_in_data(cycles, trimmed$cycle,
 									"cycles", verbose = verbose)
-		cleaned <- cleaned[cleaned$cycle %in% cycles, ]
+		trimmed <- trimmed[trimmed$cycle %in% cycles, ]
 	}
 
 	if (!missing(probes)) {
-		probes <- check_arg_in_data(probes, cleaned$probe,
+		probes <- check_arg_in_data(probes, trimmed$probe,
 									"probes", verbose = verbose)
-		cleaned <- cleaned[cleaned$probe %in% probes, ]
-		cleaned$idprobe <- droplevels(cleaned$idprobe)
+		trimmed <- trimmed[trimmed$probe %in% probes, ]
+		trimmed$idprobe <- droplevels(trimmed$idprobe)
 	}
 
-	p <- ggplot2::ggplot(data = cleaned, 
+	p <- ggplot2::ggplot(data = trimmed,
 		ggplot2::aes(x = date_time, Group = phase))
-	p <- p + ggplot2::geom_path(ggplot2::aes(y = o2_bg_delta, col = 'Background'))
-	p <- p + ggplot2::geom_path(ggplot2::aes(y = o2_delta, 
-										     col = 'Raw'))
-	p <- p + ggplot2::geom_path(ggplot2::aes(y = o2_cordelta,
-											 col = 'Corrected'))
+
+	if (!is.null(input$sim_params)) {
+		p <- plot_sim_watermark(p = p,
+						   x = trimmed$date_time,
+						   y = trimmed$o2_delta)
+	}
+	p <- p + ggplot2::geom_path(ggplot2::aes(y = o2_delta), col = "royalblue")
 	p <- p + ggplot2::theme_bw()
-	p <- p + ggplot2::scale_colour_manual(values = c("Grey", "royalblue", 
-													 "black"))
 	p <- p + ggplot2::facet_wrap(.~idprobe)
-	p <- p + ggplot2::labs(x = "", y = expression(Delta~O[2]), 
-						   title = paste('Correction method used:',
-						 				 attributes(input$cleaned)$correction_method),
-						   colour = 'Values:', linetype = 'Values:')
+	p <- p + ggplot2::labs(x = "", y = expression(Delta~O[2]))
 	
 	return(p)
 }
 
 #' Plot the calculated slopes
-#' 
+#'
 #' @param input An experiment list with calculated slopes.
 #' 	The output of \code{\link{process_experiment}} or
 #' 	\code{\link{calc_slopes}}.
 #' @param r2 show the respective R2 for each slope?
 #' @inheritParams plot_mr
-#' 
+#'
 #' @return a ggplot object
-#' 
+#'
 #' @export
-#' 
+#'
 plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 	# ggplot variables
 	date_time <- slope_cor <- valid <- NULL
 
-	slopes <- input$all_slopes
+	slopes <- input$slopes
 	slopes$idprobe <- paste0(slopes$id, " (", slopes$probe, ")")
-	idprobe_levels <-paste0(input$probe_info$id, 
+	idprobe_levels <-paste0(input$probe_info$id,
 							" (", input$probe_info$probe, ")")
 	slopes$idprobe <- factor(slopes$idprobe, levels = idprobe_levels)
 	
@@ -278,6 +291,18 @@ plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 	}
 
 	p <- ggplot2::ggplot(data = slopes, ggplot2::aes(x = date_time))
+
+	if (!is.null(input$sim_params)) {
+		aux <- range(slopes$slope_cor, na.rm = TRUE)
+		if (r2) {
+			# compensate for artificial y axis raise set below
+			aux[2] <- aux[1] + ((((aux[2] - aux[1]) / 2) * 1.15) * 2)
+		}
+		p <- plot_sim_watermark(p = p,
+						   x = slopes$date_time,
+						   y = aux)
+	}
+
 	p <- p + ggplot2::geom_line(ggplot2::aes(y = slope_cor, col = 'slope_cor'))
 	p <- p + ggplot2::geom_point(ggplot2::aes(y = slope_cor, col = 'slope_cor'))
 
@@ -290,10 +315,11 @@ plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 		r2_centre <- 0.5
 		r2_range <- 1
 
-		if (slope_range == 0 | r2_range == 0)
+		if (slope_range == 0 | r2_range == 0) {
 			compress_factor <- 1
-		else
+		}	else {
 			compress_factor <- slope_range/r2_range
+		}
 
 		data.link <- function(x, a = r2_centre, b = slope_centre,
 							  c_factor = compress_factor) {
@@ -306,11 +332,11 @@ plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 		}
 
 		p <- p + ggplot2::geom_hline(yintercept = data.link(r2_threshold))
-		p <- p + ggplot2::geom_line(ggplot2::aes(y = data.link(r2)), 
+		p <- p + ggplot2::geom_line(ggplot2::aes(y = data.link(r2)),
 									col = "grey")
 		p <- p + ggplot2::geom_point(ggplot2::aes(y = data.link(r2),
 									col = valid))
- 		p <- p + ggplot2::scale_y_continuous(sec.axis = 
+ 		p <- p + ggplot2::scale_y_continuous(sec.axis =
  			ggplot2::sec_axis(trans = axis_link, name = "R2")
  		)
 		if (any(!slopes$valid)) {
@@ -322,36 +348,36 @@ plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 	}
 	
 	p <- p + ggplot2::theme_bw()
-	p <- p + ggplot2::theme(legend.position = "none") 
-	p <- p + ggplot2::labs(y = units::make_unit_label("Slope", slope_unit), 
+	p <- p + ggplot2::theme(legend.position = "none")
+	p <- p + ggplot2::labs(y = units::make_unit_label("Slope", slope_unit),
 												 x = "Time")
 	p <- p + ggplot2::facet_wrap(idprobe ~ ., ncol = 1)
 	return(p)
 }
 
 #' Plot the metabolic rates
-#' 
+#'
 #' @param input An experiment list with calculated metabolic rates.
 #' 	The output of \code{\link{process_experiment}} or
 #' 	\code{\link{calc_mr}}.
 #' @inheritParams plot_meas
-#' 
+#'
 #' @return a ggplot object
-#' 
+#'
 #' @export
-#' 
+#'
 plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 	# ggplot variables
-	date_time <- mr_cor <- value <- Method <- NULL
+	date_time <- mr_g <- mr_real <- value <- Method <- NULL
 
 	mr <- input$mr
 	mr$idprobe <- paste0(mr$id, " (", mr$probe, ")")
-	idprobe_levels <-paste0(input$probe_info$id, 
+	idprobe_levels <-paste0(input$probe_info$id,
 							" (", input$probe_info$probe, ")")
 	mr$idprobe <- factor(mr$idprobe, levels = idprobe_levels)
 
 	if (!missing(cycles)) {
-		cycles <- check_arg_in_data(cycles, mr$cycle, 
+		cycles <- check_arg_in_data(cycles, mr$cycle,
 									"cycles", verbose = verbose)
 		mr <- mr[mr$cycle %in% cycles, ]
 	}
@@ -364,18 +390,41 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 	}
 
 	p <- ggplot2::ggplot()
-	p <- p + ggplot2::geom_line(data = mr, 
-								ggplot2::aes(x = date_time, y = mr_cor))
-	p <- p + ggplot2::geom_point(data = mr, 
-								 ggplot2::aes(x = date_time, y = mr_cor))
+
+	if (!is.null(input$sim_params)) {
+		p <- plot_sim_watermark(p = p,
+						   x = mr$date_time,
+						   y = c(mr$mr_real, mr$mr_g))
+		mr_real_aux <- data.frame(mr_real = input$sim_params$real_mr,
+						          date_time = input$slopes$date_time)
+		p <- p + ggplot2::geom_line(data = mr_real_aux,
+									ggplot2::aes(x = date_time, y = mr_real),
+									linetype = "dashed")
+		p <- p + ggplot2::geom_point(data = mr_real_aux,
+									 ggplot2::aes(x = date_time, y = mr_real),
+									 shape = 1)
+	}
+
+	p <- p + ggplot2::geom_line(data = mr,
+								ggplot2::aes(x = date_time, y = mr_g))
+	p <- p + ggplot2::geom_point(data = mr,
+								 ggplot2::aes(x = date_time, y = mr_g))
 
 	if (!is.null(input$smr)) {
-
-		mr_cols <- grepl("mr_cor", colnames(input$smr))
-		smr <- reshape2::melt(input$smr, 
-							  id.vars = c("probe", "id"),
-							  measure.vars = colnames(input$smr)[mr_cols])
-		smr$Method <- sub("_mr_cor", "", smr$variable)
+		if (is.null(input$sim_params)) {
+			mr_cols <- grepl("mr_g", colnames(input$smr))
+			smr <- reshape2::melt(input$smr,
+								  id.vars = c("probe", "id"),
+								  measure.vars = colnames(input$smr)[mr_cols])
+			smr$Method <- sub("_mr_g", "", smr$variable)
+		} else {
+			mr_cols <- colnames(input$smr) %in% c("q0.2_mr_g", "q0.2_smr_real")
+			smr <- reshape2::melt(input$smr,
+								  id.vars = c("probe", "id"),
+								  measure.vars = colnames(input$smr)[mr_cols])
+			smr$Method <- sub("_mr_g", " estimated", smr$variable)
+			smr$Method <- sub("_smr_real", " real", smr$Method)			
+		}
 		smr$idprobe <- paste0(smr$id, " (", smr$probe, ")")
 		smr$idprobe <- factor(smr$idprobe, levels = idprobe_levels)
 
@@ -384,8 +433,8 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 			smr$idprobe <- droplevels(smr$idprobe)
 		}
 
-		p <- p + ggplot2::geom_hline(data = smr, 
-									 ggplot2::aes(yintercept = value, 
+		p <- p + ggplot2::geom_hline(data = smr,
+									 ggplot2::aes(yintercept = value,
 					 							  linetype = Method),
 									 col = "red")
 	}
@@ -400,9 +449,9 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 			mmr$idprobe <- droplevels(mmr$idprobe)
 		}
 
-		p <- p + ggplot2::geom_point(data = mmr, 
-									 ggplot2::aes(x = date_time, 
-						 						  y = mr_cor),
+		p <- p + ggplot2::geom_point(data = mmr,
+									 ggplot2::aes(x = date_time,
+						 						  y = mr_g),
 									 col = "red", size = 2)
 	}
 	
@@ -413,19 +462,19 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 }
 
 #' Plot the standard metabolic rates
-#' 
+#'
 #' @param input An experiment list with calculated SMR.
 #' 	The output of \code{\link{process_experiment}} or
 #' 	\code{\link{calc_smr}}.
 #' @param probes A string of which probes to plot
-#' 
+#'
 #' @return a ggplot object
-#' 
+#'
 #' @export
-#' 
+#'
 plot_smr <- function(input, probes) {
 	# ggplot variables
-	mr_cor <- value <- Method <- NULL
+	mr_g <- value <- Method <- NULL
 
 	if (!missing(probes)) {
 		probes <- check_arg_in_data(probes, input$smr$probe, "probes")
@@ -433,15 +482,15 @@ plot_smr <- function(input, probes) {
 		input$mr <- input$mr[input$mr$probe %in% probes, ]
 	}
 
-	mr_cols <- grepl("mr_cor", colnames(input$smr))
-	aux <- reshape2::melt(input$smr, 
+	mr_cols <- grepl("mr_g", colnames(input$smr))
+	aux <- reshape2::melt(input$smr,
 						  id.vars = c("probe", "id"),
 						  measure.vars = colnames(input$smr)[mr_cols])
-	aux$Method <- sub("_mr_cor", "", aux$variable)
+	aux$Method <- sub("_mr_g", "", aux$variable)
 
 	# change facet labels
 	input$mr$idprobe <- paste0(input$mr$id, " (", input$mr$probe, ")")
-	idprobe_levels <- paste0(input$probe_info$id, 
+	idprobe_levels <- paste0(input$probe_info$id,
 							 " (", input$probe_info$probe, ")")
 	input$mr$idprobe <- factor(input$mr$idprobe, levels = idprobe_levels)
 
@@ -449,7 +498,7 @@ plot_smr <- function(input, probes) {
 	aux$idprobe <- factor(aux$idprobe, levels = idprobe_levels)
 
 	p <- ggplot2::ggplot(data = input$mr)
-	p <- p + ggplot2::geom_histogram(ggplot2::aes(x = mr_cor), 
+	p <- p + ggplot2::geom_histogram(ggplot2::aes(x = mr_g),
 		fill = "white", colour = "grey", binwidth = 0.1)
 	p <- p + ggplot2::geom_vline(data = aux, ggplot2::aes(xintercept = value,
 														  linetype = Method))
@@ -460,18 +509,18 @@ plot_smr <- function(input, probes) {
 
 
 #' Plot the standard metabolic rates
-#' 
+#'
 #' @param input An experiment list with calculated rolling MR values.
 #' 	The output of \code{\link{roll_mr}}.
 #' @inheritParams plot_meas
-#' 
+#'
 #' @return a ggplot object
-#' 
+#'
 #' @export
-#' 
+#'
 plot_rolling_mr <- function(input, probes, cycles) {
 	# ggplot variables
-	phase_time <- date_time <- mr_cor <- r2 <- NULL
+	phase_time <- date_time <- mr_g <- r2 <- NULL
 
 	mr <- input$rolling_mr$values
 	max_mr <- input$rolling_mr$max
@@ -495,16 +544,16 @@ plot_rolling_mr <- function(input, probes, cycles) {
 	}
 
 	# remove units
-	o2_unit <- units(mr$mr_cor)
-	mr$mr_cor <- as.numeric(mr$mr_cor)
-	max_mr$mr_cor <- as.numeric(max_mr$mr_cor)
+	o2_unit <- units(mr$mr_g)
+	mr$mr_g <- as.numeric(mr$mr_g)
+	max_mr$mr_g <- as.numeric(max_mr$mr_g)
 
 	# make facets
 	aux <- unique(mr[, c("id", "probe", "cycle")])
 	aux <- aux[order(aux$probe), ]
 
-	ipp_levels <- paste0(aux$id, " (", 
-						 aux$probe, ") - ", 
+	ipp_levels <- paste0(aux$id, " (",
+						 aux$probe, ") - ",
 						 aux$cycle)
 
 	mr$idprobecycle <- paste0(mr$id, " (", mr$probe, ") - ", mr$cycle)
@@ -514,16 +563,16 @@ plot_rolling_mr <- function(input, probes, cycles) {
 	max_mr$idprobecycle <- factor(max_mr$idprobecycle, levels = ipp_levels)
 
 	
-	p <- ggplot2::ggplot(data = mr, ggplot2::aes(x = phase_time, y = mr_cor))
+	p <- ggplot2::ggplot(data = mr, ggplot2::aes(x = phase_time, y = mr_g))
 	p <- p + ggplot2::geom_line()
 	p <- p + ggplot2::geom_point(data = max_mr, col = 'red')
 	p <- p + ggplot2::theme_bw()
 
 
-	rer_mean <- as.numeric(mean(mr$mr_cor, na.rm = TRUE))
+	rer_mean <- as.numeric(mean(mr$mr_g, na.rm = TRUE))
 	r2_mean <- 0.5
 	mean_dif <- r2_mean - rer_mean
-	aux <- as.numeric(range(mr$mr_cor, na.rm = TRUE))
+	aux <- as.numeric(range(mr$mr_g, na.rm = TRUE))
 	rer_range <- aux[2] - aux[1]
 	r2_range <- 1
 
@@ -538,7 +587,7 @@ plot_rolling_mr <- function(input, probes, cycles) {
 		b + ((x - a) * c_factor) # = y
 	}
 
-	axis_link <- function(y, a = r2_mean, b = rer_mean, 
+	axis_link <- function(y, a = r2_mean, b = rer_mean,
 						  c_factor = compress_factor) {
 	  (y + a * c_factor - b) / c_factor # = x
 	}
@@ -556,22 +605,25 @@ plot_rolling_mr <- function(input, probes, cycles) {
 
 
 #' Wrapper to plot the whole experiment data for one probe
-#' 
+#'
 #' @param input An experiment list with the experimental data.
 #' The output of \code{\link{process_experiment}}.
 #' @param probe The probe to plot (can only plot one probe at a time).
 #' @inheritParams plot_meas
-#' 
+#'
 #' @export
-#' 
-plot_experiment <- function(input, cycles, probe, verbose = TRUE) {
+#'
+plot_experiment <- function(input, cycles, probe, verbose = FALSE) {
+	if (!is.null(input$sim_params) & missing(probe)) {
+		probe <- "S1"
+	}
 
 	if (length(probe) > 1) {
 		stop("Please select only one probe at a time.")
 	}
 	if (!is.null(input$bg$pre)) {
-		# if (verbose) message('Plotting pre-background')
-		p_pre <- plot_bg(input$bg$pre, probes = probe) 
+		if (verbose) message('Plotting pre-background')
+		p_pre <- plot_bg(input$bg$pre, probes = probe)
 		p_pre <- p_pre + ggplot2::labs(title = 'Pre-background')
 	} else {
 		p_pre <- patchwork::wrap_elements(
@@ -579,48 +631,56 @@ plot_experiment <- function(input, cycles, probe, verbose = TRUE) {
 	}
 
 	if (!is.null(input$bg$post)) {
-		# if (verbose) message('Plotting post-background')
-		p_post <- plot_bg(input$bg$post, probes = probe) 
+		if (verbose) message('Plotting post-background')
+		p_post <- plot_bg(input$bg$post, probes = probe)
 		p_post <- p_post + ggplot2::labs(title = 'Post-background')
 	} else {
 		p_post <- patchwork::wrap_elements(
 			grid::textGrob('Post-bg was not included'))
 	}
 
-	# if (verbose) message('Plotting measurements')
+	if (verbose) message('Plotting measurements')
 
-	p_meas <- plot_meas(input, cycles = cycles, probes = probe,
-						show_temp = TRUE, verbose = verbose)
-	p_meas <- p_meas + ggplot2::labs(x = '')
-	
-	# if (verbose) message('Plotting deltas')
+	if (is.null(input$sim_params)) {
+		p_meas <- plot_meas(input, cycles = cycles, probes = probe,
+							show_temp = TRUE, verbose = verbose)
+		p_meas <- p_meas + ggplot2::labs(x = '')
+		x_ruler <- p_meas
+	}
 
-	p_delta <- plot_deltas(input, cycles = cycles,
-			 			   probes = probe, verbose = FALSE)
-	p_delta <- p_delta + mimic_x_datetime(p_meas)
-
-	# if (verbose) message('Plotting plotting slopes')
+	if (verbose) message('Plotting plotting slopes')
 
 	p_slopes <- plot_slopes(input, cycles = cycles,
-						    probes = probe, verbose = FALSE) 
-	p_slopes <- p_slopes + mimic_x_datetime(p_meas) + ggplot2::xlab('')
+						    probes = probe, verbose = FALSE)
+	p_slopes <- p_slopes + ggplot2::xlab('')
 
-	# if (verbose) message('Plotting metabolic rate')
+	if (is.null(input$sim_params)) {
+		p_slopes <- p_slopes + mimic_x_datetime(x_ruler)
+	} else {
+		x_ruler <- p_slopes
+	}
+
+	if (verbose) message('Plotting metabolic rate')
 
 	probe_check <- any(input$mr$probe == probe)
 	cycle_check <- (missing(cycles) || any(input$mr$cycle %in% cycles))
-	combined_check <- (missing(cycles) || 
+	combined_check <- (missing(cycles) ||
 					  any(input$mr$probe == probe & input$mr$cycle %in% cycles))
 	if (probe_check && cycle_check && combined_check) {
 		p_mr <- plot_mr(input, cycles = cycles, probes = probe, verbose = FALSE)
-		p_mr <- p_mr + mimic_x_datetime(p_meas)
+		p_mr <- p_mr + mimic_x_datetime(x_ruler)
 	} else {
 		p_mr <- patchwork::wrap_elements(
 			grid::textGrob('No valid MO2 values found'))
 	}
-	p_final <- p_pre + p_post + p_meas + p_delta + p_slopes + 
-		 	   p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD\nEE\nFF')
 
+	if (is.null(input$sim_params)) {
+		p_final <- p_pre + p_post + p_meas + p_slopes +
+			 	   p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD\nEE')
+	} else {
+		p_final <- p_pre + p_post + p_slopes +
+			 	   p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD')
+	}
 	return(p_final)
 }
 
