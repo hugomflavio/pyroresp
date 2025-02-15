@@ -1,126 +1,57 @@
 #' Calculate background values
-#' 
-#' Can calculate linear background with forced 0 intercept, or rolling average
-#' background if smoothing is specified.
-#' 
+#'
 #' @param input The output of \code{\link{process_experiment}}.
 #' @param method How should multiple background cycles for a single probe
 #'  be handled? One of:
 #'    'mean'  : All the measured cycles are used for the calculations
 #'    'first' : Only the first cycle is used for the calculations
 #'    'last'  : Only the last cycle is used for the calculations
-#' @param smoothing Optional. If included, the function calculates a rolling
-#'  average background, instead of the classical linear model with 0-intercept.
-#'  Value in seconds.
-#' 
+#'
 #' @return The input list, with a new "bg" object.
-#' 
+#'
 #' @export
-#' 
-calc_bg <- function(input, method = c('mean', 'first', 'last'),
-    smoothing){
+#'
+calc_bg <- function(input, method = c('mean', 'first', 'last')){
 
   method <- match.arg(method)
 
   # extract some variables we'll be using for convenience
-  cleaned <- input$cleaned
-  cycles <- unique(cleaned$cycle)
+  trimmed <- input$trimmed
+  cycles <- unique(trimmed$cycle)
 
   # discard unnecessary cycles if relevant
-  if (method == 'first')
-    cleaned <- cleaned[cleaned$cycle == cycles[1], ]
-    
-  if (method == 'last')
-    cleaned <- cleaned[cleaned$cycle == cycles[length(cycles)], ]
+  if (method == 'first') {
+    trimmed <- trimmed[trimmed$cycle == cycles[1], ]
+  }
+
+  if (method == 'last') {
+    trimmed <- trimmed[trimmed$cycle == cycles[length(cycles)], ]
+  }
 
   # split by probe to start working
-  probe_lists <- split(cleaned, cleaned$probe)
+  probe_lists <- split(trimmed, trimmed$probe)
 
-  if (missing(smoothing)) {
-    bg_lists <- lapply(probe_lists, function(probe) {
-      
-      bg_lm <- lm(as.numeric(o2_delta) ~ as.numeric(phase_time), data = probe)
+  bg_lists <- lapply(probe_lists, function(probe) {
 
-      # for the intercept to be 0
-      bg_lm$coefficients[1] <- 0 
+    aux <- with(probe,
+                aggregate(as.numeric(o2_delta),
+                          list(phase_time = as.numeric(phase_time)),
+                          mean))
+    colnames(aux)[2] <- "o2_delta"
+    bg_lm <- lm(o2_delta ~ phase_time, data = aux)
 
-      # calculate the values for the relevant phase times
-      output <- data.frame(phase_time = 1:max(probe$phase_time))
+    # force the intercept to be 0
+    bg_lm$coefficients[1] <- 0
 
-      output$o2_bg_delta <- as.vector(
-        stats::predict(bg_lm, output, type = "response", se.fit = FALSE)
-      )
+    output <- data.frame(slope = bg_lm$coefficients[2],
+                         R2 = summary(bg_lm)$adj.r.squared)
+    # done
+    return(output)
+  })
 
-      # done
-      return(output)
-    })
-  } else {
-    bg_lists <- lapply(probe_lists, function(probe, smoothing) {
-      # start by calculating the means by time point
-      output <- stats::aggregate(x = probe$o2_delta, 
-                                 by = list(probe$phase_time), 
-                                 FUN = mean, na.rm = TRUE)
-      colnames(output) <- c('phase_time', 'o2_bg_delta')
-      
-      # then, if smoothing is being applied, do averages over time
-      if (smoothing > 1) {
-        # Bulk of the averages is automatically calculated
-        x <- stats::filter(x = output$o2_bg_delta, 
-                           filter = rep(1/smoothing, smoothing), 
-                           method = "convolution",
-                           sides = 2)
-        # but this will give you NAs on the head and tail of the vector.
-        # While understandable, for our purpose we want to fill those gaps in.
-        first_value <- head(which(!is.na(x)), 1)
-        for (i in 1:(first_value - 1)) {
-          # |  usable  range  |
-          # |1 - - - i - - - -|2i
-          usable_range <- 1:(2 * i - 1)
-          x[i] <- mean(output$o2_bg_delta[usable_range])
-        }
-
-        last_value <- tail(which(!is.na(x)), 1)
-        for (i in (last_value + 1):length(x)) {
-          # Determining usable ranges at the tail using length(x)
-          #
-          #  |     usable range     |
-          #  | y  - - - i - - - l(x)|
-          #  |    A    |-|     B    |
-          #  
-          #  A == B
-          #  B = l(x) - i
-          #  y = i - B
-
-          #  Test, assume length(x) = 20 and i = 16
-          #
-          #  B = 20 - 16 = 4
-          #  y = 16 - 4 = 12
-          #  |    usable range    |
-          #  |12 - - - 16 - - - 20| Correct.
-          
-          #  Test, assume length(x) = 20 and i = 17
-          #
-          #  B = 20 - 17 = 3
-          #  y = 17 - 3 = 14
-          #  |  usable range  |
-          #  |14 - - 17 - - 20| Correct.
-
-          B <- length(x) - i
-          y <- i - B
-          usable_range <- y:length(x)
-          x[i] <- mean(output$o2_bg_delta[usable_range])
-        }
-
-        output$o2_bg_delta <- as.numeric(x)
-      }
-      return(output)
-    }, smoothing = smoothing)
-  }
-  
   output <- as.data.frame(data.table::rbindlist(bg_lists, idcol = 'probe'))
 
-  units(output$phase_time) <- units(cleaned$phase_time)
-  units(output$o2_bg_delta) <- units(cleaned$o2_delta)
+  units(output$slope) <- units(trimmed$o2_delta[1]/trimmed$phase_time[1])
 
   input$bg <- output
 
@@ -130,84 +61,57 @@ calc_bg <- function(input, method = c('mean', 'first', 'last'),
 
 #' Replace background readings for any given
 #' probes using the values from another probe.
-#' 
+#'
 #' @param input The output of \code{\link{calc_bg}}.
 #' @param replace A string of probe names to replace.
 #' @param with The probe to use as a reference for replacement.
-#' 
-#' @return the updated bg dataframe
-#' 
+#'
+#' @return the updated input object
+#'
 #' @export
-#' 
+#'
 replace_bg <- function(input, replace, with) {
   bg <- input$bg
 
-  if (is.null(bg))
+  if (is.null(bg)) {
     stop("Could not find a bg object in the input")
+  }
 
-  if (any(!(replace %in% bg$probe)))
+  if (any(!(replace %in% bg$probe))) {
     stop("Could not find some of the specified probes to replace in bg")
+  }
 
-  if (length(with) != 1)
+  if (length(with) != 1) {
     stop("Please chose only one probe to use as replacement in 'with'.")
-  
-  if (!(with %in% bg$probe))
+  }
+
+  if (!(with %in% bg$probe)) {
     stop("Could not find the replacement probe in bg")
+  }
+
+  # add a space to note that it has been replaced
+  if (!("note" %in% colnames(bg))) {
+    bg$note <- ""
+  }
 
   for (i in replace) {
-    if (sum(bg$probe == i) > sum(bg$probe == with))
-      stop("the cycle for the replacement probe is shorted than the cycle for the_probe to be replaced.")
+    if (sum(bg$probe == i) > sum(bg$probe == with)) {
+      stop("the cycle for the replacement probe is shorted than the cycle",
+           " for the_probe to be replaced.")
+    }
 
-    bg$o2_bg_delta[bg$probe == i] <- bg$o2_bg_delta[bg$probe == with][1:sum(bg$probe == i)]
-    # that's some unholy sequential bracketing but I don't
-    # recall why I did it so I am letting it stay :)
+    bg$slope[bg$probe == i] <- bg$slope[bg$probe == with]
+    bg$R2[bg$probe == i] <- bg$R2[bg$probe == with]
+    bg$note[bg$probe == i] <- paste("Copied from ", with)
   }
 
   input$bg <- bg
   return(input)
 }
 
-
-#' Expand background readings linearly
-#' 
-#' Use this if your measurement phase is longer than your background and you
-#' want ot expand your background linearly to accomodate the full duration
-#' of the phase.
-#' 
-#' @param input an experiment list containing background readings.
-#'  The output of \code{\link{calc_bg}}.
-#' @param to The number of seconds to which to extend the background readings.
-#' 
-#' @return the updated input.
-#' 
-#' @export
-#' 
-extrapolate_bg <- function(input, to) {
-  bg <- input$bg
-  aux <- split(bg, bg$probe)
-
-  recipient <- lapply(names(aux), function(P) {
-    m <- lm(as.numeric(o2_bg_delta) ~ as.numeric(phase_time),
-            data = aux[[P]])
-    output <- data.frame(probe = P,
-                         phase_time = 1:to)
-    units(output$phase_time) <- units(aux[[P]]$phase_time)
-    output$o2_bg_delta <- predict(m, output)
-    output$o2_bg_delta[1:nrow(aux[[P]])] <- aux[[P]]$o2_bg_delta
-    return(output)
-  })
-
-  output <- do.call(rbind, recipient)
-  units(output$o2_bg_delta) <- units(bg$o2_bg_delta)
-
-  input$bg <- output
-  return(input)
-}
-
 #' Subtract background from slopes
 #'
-#'
-#' @param input A list containing cleaned oxygen data.
+#' @param input A list containing trimmed oxygen data.
 #'  Obtained through \code{\link{process_experiment}}.
 #' @param pre (optional) A data frame containing pre-test background readings.
 #'  Obtained through \code{\link{calc_bg}}.
@@ -229,25 +133,25 @@ extrapolate_bg <- function(input, to) {
 #' \item  "parallel" - subtracts the oxygen consumption readings of one probe
 #'          (listed using ref_probe) from the remaining probes, matching both
 #'          by cycle.
-#' \item  "none" - does not perform oxygen consumption subtraction. 
+#' \item  "none" - does not perform oxygen consumption subtraction.
 #'          Not recommended for anything other than checking test data.
 #' }
-#' @param ref_probe  string: the name of an empty probe used 
+#' @param ref_probe  string: the name of an empty probe used
 #'  only for the method 'parallel'
 #'
-#' @return  A data frame containing data of metabolic rate measurements 
+#' @return  A data frame containing data of metabolic rate measurements
 #'  corrected for background respiration.
 #'
-#' @references {Svendsen, M. B. S., Bushnell, P. G., & Steffensen, J. F. (2016). 
-#' Design and setup of intermittent-flow respirometry system for aquatic 
+#' @references {Svendsen, M. B. S., Bushnell, P. G., & Steffensen, J. F. (2016).
+#' Design and setup of intermittent-flow respirometry system for aquatic
 #' organisms. Journal of Fish Biology, 88(1), 26-50.}
 #'
 #' @export
 #'
 subtract_bg <- function (input, pre, post,
-                        method = c("pre", "post", "average",
-                                   "linear", "parallel", "none"),
-                        ref_probe){
+                         method = c("pre", "post", "average",
+                                    "linear", "parallel", "none"),
+                         ref_probe){
 
   method <- match.arg(method)
 
@@ -257,10 +161,10 @@ subtract_bg <- function (input, pre, post,
     if (missing(pre)) {
       stop("method = '", method, "' but argument pre is missing.")
     }
-    probe_check <- unique(input$cleaned$probe) %in% unique(pre$bg$probe)
+    probe_check <- unique(input$trimmed$probe) %in% unique(pre$bg$probe)
     if (any(!probe_check)) {
       stop("Could not find probe(s) ",
-           paste(unique(input$cleaned$probe)[!probe_check], collapse = ", "),
+           paste(unique(input$trimmed$probe)[!probe_check], collapse = ", "),
            " in the pre background data.")
     }
   }
@@ -270,40 +174,18 @@ subtract_bg <- function (input, pre, post,
     if (missing(post)) {
       stop("method = '", method, "' but argument post is missing.")
     }
-    probe_check <- unique(input$cleaned$probe) %in% unique(post$bg$probe)
+    probe_check <- unique(input$trimmed$probe) %in% unique(post$bg$probe)
     if (any(!probe_check)) {
       stop("Could not find probe(s) ",
-           paste(unique(input$cleaned$probe)[!probe_check], collapse = ", "),
+           paste(unique(input$trimmed$probe)[!probe_check], collapse = ", "),
            " in the post background data.")
     }
   }
 
   if (method %in% c("average", "linear", "exponential")) {
-    split_pre <- split(pre$bg, pre$bg$probe)
-    split_post <- split(post$bg, post$bg$probe)
-    capture <- lapply(names(split_pre), function(probe) {
-      if (nrow(split_pre[[probe]]) != nrow(split_post[[probe]])) {
-        warning("The pre-bg and post-bg in probe ", probe, 
-          " have different lengths! Truncating longer vector.", 
-          immediate. = TRUE, call. = FALSE)
-        
-        if (nrow(split_pre[[probe]]) < nrow(split_post[[probe]])) {
-          good_range <- 1:nrow(split_pre[[probe]])
-          replacement <- split_post[[probe]][good_range, ]
-          split_post[[probe]] <<- replacement
-        } else {
-          good_range <- 1:nrow(split_post[[probe]])
-          replacement <- split_pre[[probe]][good_range, ]
-          split_pre[[probe]] <<- replacement
-        }
-      }
-    })
-    pre$bg <- do.call(rbind, split_pre)
-    post$bg <- do.call(rbind, split_post)
-
-    if (units(pre$bg$o2_bg_delta) != units(post$bg$o2_bg_delta)) {
+    if (units(pre$bg$slope) != units(post$bg$slope)) {
       stop("It seems the two background readings are not in the same unit! (",
-        units(pre$bg$o2_bg_delta), " != ", units(post$bg$o2_bg_delta), ").")
+           units(pre$bg$slope), " != ", units(post$bg$slope), ").")
     }
   }
 
@@ -311,8 +193,8 @@ subtract_bg <- function (input, pre, post,
     if (missing(ref_probe)) {
       stop("method = 'parallel' but argument ref_probe is missing.")
     }
-    if (!any(ref_probe %in% input$cleaned$probe)) {
-      stop("Could not find ref_probe in cleaned data.")
+    if (!any(ref_probe %in% input$trimmed$probe)) {
+      stop("Could not find ref_probe in trimmed data.")
     }
   }
 
@@ -329,7 +211,7 @@ subtract_bg <- function (input, pre, post,
 
   if (method == "average") {
     my_bg <- pre$bg
-    my_bg$o2_bg_delta <- (pre$bg$o2_bg_delta + post$bg$o2_bg_delta) / 2
+    my_bg$slope <- (pre$bg$slope + post$bg$slope) / 2
     input$bg$pre <- pre
     input$bg$post <- post
   }
@@ -341,135 +223,91 @@ subtract_bg <- function (input, pre, post,
   }
 
   if (method == "parallel") {
-    my_bg <- input$cleaned[input$cleaned$probe == ref_probe, ]
-    my_bg$o2_bg_delta <- my_bg$o2_delta
+    stop("this method needs to be updated for new slope bg output.")
+    # my_bg <- input$slopes[input$slopes$probe == ref_probe, ]
+    # my_bg$o2_bg_delta <- my_bg$o2_delta
   }
 
-  # make equivalent indexes 
+  # make equivalent indexes
   if (method %in% c("pre", "post", "average")) {
-    input$cleaned$tmp_index <- paste(input$cleaned$probe, 
-                                     input$cleaned$phase_time)
-    
-    my_bg$tmp_index <- paste(my_bg$probe, 
-                             my_bg$phase_time)
+    input$slopes$tmp_index <- input$slopes$probe
+    my_bg$tmp_index <- my_bg$probe
   }
 
   if (method %in% c("linear", "exponential")) {
-    input$cleaned$tmp_index <- paste(input$cleaned$cycle, 
-                                     input$cleaned$probe,
-                                     input$cleaned$phase_time)
+    input$slopes$tmp_index <- paste(input$slopes$probe,
+                                     input$slopes$cycle)
 
-    my_bg$tmp_index <- paste(my_bg$cycle, 
-                             my_bg$probe, 
-                             my_bg$phase_time)
+    my_bg$tmp_index <- paste(my_bg$probe,
+                             my_bg$cycle)
   }
 
   if (method == "parallel") {
-    my_bg$tmp_index <- paste(my_bg$cycle,
-                             my_bg$phase_time)
+    stop("this method needs to be updated for new slope bg output.")
+    # my_bg$tmp_index <- paste(my_bg$cycle,
+    #                          my_bg$phase_time)
 
-    input$cleaned$tmp_index <- paste(input$cleaned$cycle,
-                                     input$cleaned$phase_time)
+    # input$slopes$tmp_index <- paste(input$slopes$cycle,
+    #                                  input$slopes$phase_time)
   }
 
   # transfer bg readings
   if (method == "none") {
-    input$cleaned$o2_bg_delta <- 0
-    units(input$cleaned$o2_bg_delta) <- units(input$cleaned$o2_delta)
+    input$slopes$slope_bg <- 0
+    units(input$slopes$slope_bg) <- units(input$slopes$slope)
   } else {
-    link <- match(input$cleaned$tmp_index, my_bg$tmp_index)
-    input$cleaned$o2_bg_delta <- my_bg$o2_bg_delta[link]
-    input$cleaned$tmp_index <- NULL
-    
-    if (any(is.na(input$cleaned$o2_bg_delta)))
-      warning("Some measurement phases are longer than the background.",
-        " Discarding overextended points.", 
-        immediate. = TRUE, call. = FALSE)
-
-    input$cleaned <- input$cleaned[!is.na(input$cleaned$o2_bg_delta), ]
+    link <- match(input$slopes$tmp_index, my_bg$tmp_index)
+    input$slopes$slope_bg <- my_bg$slope[link]
+    input$slopes$tmp_index <- NULL
   }
-
   #-----------------------------------------------------------------------------
-  input$cleaned$o2_cordelta <- input$cleaned$o2_delta - input$cleaned$o2_bg_delta
+  input$slopes$slope_cor <- with(input$slopes, slope - slope_bg)
+  input$slopes$bg_pct_of_cor <- with(input$slopes, slope_bg / slope_cor)
+  # units is now "1"; changing to percent automatically multiplies by 100
+  units(input$slopes$bg_pct_of_cor) <- "percent"
 
-  # aux <- split(input$cleaned, paste0(input$cleaned$probe, input$cleaned$phase))
-  # aux <- lapply(aux, function(x) {
-  #   x$o2_cordelta <- x$o2_cor - x$o2_cor[1]
-  #   return(x)
-  # })
-
-  # output <- as.data.frame(data.table::rbindlist(aux))
-  # output <- transfer_attributes(input$cleaned, output)
-  # attributes(output)$correction_method <- method
- attributes(input$cleaned)$correction_method <- method
-
-  # input$cleaned <- output
+  attributes(input$slopes)$correction_method <- method
 
   return(input)
 }
 
-
-
 #' Internal function
-#' 
+#'
 #' Calculates the linear progression between pre- and post-background readings,
 #' used by \code{\link{subtract_bg}}
-#' 
+#'
 #' @inheritParams subtract_bg
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 calc_linear_bg <- function(input, pre, post) {
-  cycles <- max(input$cleaned$cycle)
+  cycles <- max(input$slopes$cycle)
 
-  my_bg <- lapply(unique(input$cleaned$probe), function(probe) {
+  my_bg <- lapply(unique(input$trimmed$probe), function(probe) {
     # cat(probe, "\n")
-    pre_line <- pre$bg$o2_bg_delta[pre$bg$probe == probe]
-    post_line <- post$bg$o2_bg_delta[post$bg$probe == probe]
+    pre_slope <- pre$bg$slope[pre$bg$probe == probe]
+    post_slope <- post$bg$slope[post$bg$probe == probe]
 
-    if (length(pre_line) != length(post_line)) {
-      warning("The pre-bg and post-bg in probe ", probe, 
-              " have different lengths! Truncating longer vector.", 
-              immediate. = TRUE, call. = FALSE)
-      
-      if (length(pre_line) < length(post_line))
-        post_line <- post_line[1:length(pre_line)]
-      else
-        pre_line <- pre_line[1:length(post_line)]
-    }
+    slope_diff <- post_slope - pre_slope
 
-    difference <- post_line - pre_line
-
-    if (all(as.numeric(difference) == 0)) {
+    if (as.numeric(slope_diff) == 0) {
       stop("The pre-bg and post-bg are exactly the same!",
            " Cannot calculate linear progression.", call. = FALSE)
     }
 
-    # linear increments.
-    increments <- difference / (cycles - 1)
+    # linear slope_incr.
+    slope_incr <- slope_diff / (cycles - 1)
 
-    my_list <- lapply(1:length(pre_line), function(i) {
-      seq(from = pre_line[i], to = post_line[i], by = increments[i])
-    })
+    slope_bg <- seq(from = pre_slope,
+                   to = post_slope,
+                   by = slope_incr)
 
-    my_matrix <- as.data.frame(do.call(rbind, my_list))
+    output <- data.frame(probe = probe,
+                         cycle = 1:cycles,
+                         slope_bg = slope_bg)
 
-    return(my_matrix)
+    return(output)
   })
-  names(my_bg) <- unique(input$cleaned$probe)
-
-  my_bg_simplified <- lapply(names(my_bg), function(probe) {
-    x <- suppressMessages(reshape2::melt(my_bg[[probe]]))
-    colnames(x) <- c("cycle", "o2_bg_delta")
-    x$phase_time <- 1:nrow(my_bg[[probe]])
-    x$cycle <- as.numeric(sub("V", "", x$cycle))
-    x$probe <- probe
-
-    units(x$phase_time) <- units(pre$bg$phase_time)
-    units(x$o2_bg_delta) <- units(pre$bg$o2_bg_delta)
-    return(x)
-  })
-
-  my_bg_df <- do.call(rbind, my_bg_simplified)
-  return(my_bg_df)
+  output <- do.call(rbind, my_bg)
+  return(output)
 }
