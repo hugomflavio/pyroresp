@@ -1,15 +1,15 @@
 #' suppress incomplete final line warning
-#' 
+#'
 #' Data files do not end with an EOL. This is by design, so a warning should
 #' not be thrown. This function catches that specific warning and suppresses
 #' it, while letting other warnings be shown.
-#' 
+#'
 #' @param expr the read.table function call
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 #' @return The outcome of the expression
-#' 
+#'
 suppress_EOL_warning <- function(expr) {
 	.suppress_eol <- function(w) {
 		if (!grepl("incomplete final line", w$message)) {
@@ -22,17 +22,17 @@ suppress_EOL_warning <- function(expr) {
 }
 
 #' check that the requested argument value is present in the data
-#' 
+#'
 #' @param arg the argument value
 #' @param data A vector of the target data
 #' @param name For messaging purposes; the type of data we're working with.
 #' @param verbose Should a warning be sent if the argument does not fully
 #' 	match the data?
-#' 
+#'
 #' @return the matching elements of arg
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 check_arg_in_data <- function(arg, data, name, verbose = TRUE) {
 	arg_check <- arg %in% data
 
@@ -46,7 +46,7 @@ check_arg_in_data <- function(arg, data, name, verbose = TRUE) {
 					" in the input. Discarding those.",
 					immediate. = TRUE, call. = FALSE)
 		} else {
-			warning("Could not find ", sum(arg_check), 
+			warning("Could not find ", sum(arg_check),
 					" of the requested ", name, " ",
 					"in the input. Discarding those.",
 					immediate. = TRUE, call. = FALSE)
@@ -58,15 +58,15 @@ check_arg_in_data <- function(arg, data, name, verbose = TRUE) {
 }
 
 #' convert weight to volume in ml
-#' 
+#'
 #' @param w a units object in either grams or kilograms
 #' @param d The density. defaults to 1 (1g = 1ml). Defaults to 1.
 #'  Higher densities lead to lower volumes, e.g. if d = 2, then 1g = 0.5ml.
-#' 
+#'
 #' @return a units object in ml
-#' 
+#'
 #' @export
-#' 
+#'
 conv_w_to_ml <- function(w, d = 1) {
   if (!inherits(w, "units")) {
     stop("w must be a units class object")
@@ -88,13 +88,13 @@ conv_w_to_ml <- function(w, d = 1) {
 
 
 #' Assign device names after completing experiment
-#' 
+#'
 #' To use if you forgot to assign a device name at the start of the experiment.
 #' Goes through the raw data files, renames the required device names, and
 #' resaves the files.
-#' 
+#'
 #' NOTE: This function will modify the files in your data folder!
-#' 
+#'
 #' @inheritParams load_experiment
 #' @param old_name The name of the device to be substituted.
 #' @param new_name The new name to assign to the device.
@@ -102,12 +102,12 @@ conv_w_to_ml <- function(w, d = 1) {
 #' 	instead of old_name, if preferable.
 #' @param confirmed Logical: Have you reviewed the changes and confirm you
 #'  want to apply them? Defaults to FALSE to perform a dry run.
-#' 
+#'
 #' @return Nothing. Used for side effects.
-#' 
+#'
 #' @export
-#' 
-assign_device_names <- function(folder, old_name, new_name, old_letter, 
+#'
+assign_device_names <- function(folder, old_name, new_name, old_letter,
 																confirmed = FALSE, encoding = "ISO-8859-1") {
 	found_none <- TRUE
 
@@ -179,12 +179,12 @@ assign_device_names <- function(folder, old_name, new_name, old_letter,
 
 #' helper function to avoid attribute loss
 #' caused by the split->lapply->rbind process
-#' 
+#'
 #' @param from The original data frame
 #' @param to The remade data frame
-#' 
+#'
 #' @keywords internal
-#' 
+#'
 #' @return "to", with any new attributes transferred from "from."
 transfer_attributes <- function(from, to) {
 	attr_from <- names(attributes(from))
@@ -201,30 +201,42 @@ transfer_attributes <- function(from, to) {
 }
 
 #' calculate standard error of the mean
-#' 
+#'
 #' @param x a vector of numbers
 #' @param na.rm Defaults to TRUE
-#' 
+#'
 #' @return the SEM value
-#' 
+#'
 #' @export
-#' 
+#'
 sem <- function(x, na.rm = TRUE){
     a <- length(x)
 
     if(na.rm) {
         x <- x[!is.na(x)]
     }
-    
+
     if(a != length(x)) {
         message("M: Omitted ", a - length(x), " missing values.")
 		}
-    
+
     output <- sd(x) / sqrt(length(x))
- 
+
     return(output)
 }
 
+
+#' Calculate area under the curve for two vectors
+#'
+#' @param x a vector of x values
+#' @param y a vector of y values
+#' @param zero which value to consider as the y floor. defaults to 0.
+#'
+#' @return a dataframe containing the y and x values, as well as the calculated
+#' 	auc for each pair of points and the cumulative auc as X progresses.
+#'
+#' @export
+#'
 auc <- function(x, y, zero = 0) {
 	units(zero) <- units(y)
 	if (length(x) != length(y)) {
