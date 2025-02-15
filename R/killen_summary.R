@@ -4,9 +4,7 @@
 #'
 #' @param input A resp object that went through \code{\link{process_mr}}.
 #'
-#' @references Killen, S. S., Christensen, E. A. F., Cortese, D., Z\'{a}vorka,
-#'   L., Norin, T., Cotgrove, L., Crespel, A., Munson, A., Nati, J. J. H.,
-#'   Papatheodoulou, M., & McKenzie, D. J. (2021). Guidelines for reporting
+#' @references Killen et al. (2021). Guidelines for reporting
 #'   methods to estimate metabolic rates by aquatic intermittent-flow
 #'   respirometry. Journal of Experimental Biology, 224(18), jeb242522.
 #'   <https://doi.org/10.1242/jeb.242522>

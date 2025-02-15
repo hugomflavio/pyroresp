@@ -1,7 +1,7 @@
 #' Calculate slopes from clean measurements
 #'
 #' @param input A dataframe of clean measurements.
-#'  The output of \code{\link{clean_meas}}.
+#'  The output of \code{\link{trim_resp}}.
 #'
 #' @export
 #'

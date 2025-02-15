@@ -140,7 +140,7 @@ trim_resp <- function(input, wait = 0, cycle_max = Inf,
 #' for each probe*cycle combination.
 #'
 #' @param input a data frame with trimmed measurements.
-#'  The output of \code{\link{clean_meas}}.
+#'  The output of \code{\link{trim_resp}}.
 #' @param zero_buffer when calculating the delta, a value must be assigned to 0.
 #'  Traditionally, this is the very first value of the cycle. However, due to
 #'  natural probe noise, this can cause an upward or downard shift to the whole

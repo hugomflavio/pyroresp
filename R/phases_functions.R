@@ -8,7 +8,7 @@
 #' 
 load_phases <- function(file) {
   e <- new.env()
-  load(target, envir = e)
+  load(file, envir = e)
   flush_data <- e$flush_data
   return(flush_data)
 }
@@ -76,8 +76,7 @@ assign_phases <- function(input) {
 
       NA_check <- is.na(pyr[, new_col])
       if (any(NA_check)) {
-        warning(sum(NA_check), " measurement(s) in device ",dvc,
-                ", probe ", prb,
+        warning(sum(NA_check), " measurement(s) in probe ", prb,
                 " could not be assigned to a phase!",
                 call. = FALSE, immediate. = TRUE)
       }

@@ -11,9 +11,10 @@
 #'
 #' @export
 #'
-calc_mr <- function(slope_data, d = 1){
+calc_mr <- function(slope_data, density = 1){
   slope_data$mr_abs <- -(slope_data$slope_cor *
-                         (slope_data$volume - conv_w_to_ml(slope_data$mass, d))
+                         (slope_data$volume - conv_w_to_ml(slope_data$mass,
+                                                           density))
                         )
 
   slope_data$mr_g <- slope_data$mr_abs / slope_data$mass
@@ -33,9 +34,6 @@ calc_mr <- function(slope_data, d = 1){
 #' @param cycle which cycle to select
 #' @param smoothing How many points should be gathered for
 #'  each calculation of the rolling MR
-#' @param density The density. defaults to 1 (1 g = 1 ml).
-#'  Higher densities lead to lower volumes, e.g. if density = 2,
-#'   then 1 g = 0.5 ml.
 #' @param r2 Minimal coefficient of determination (\eqn{r^{2}})
 #'  for valid slopes. Defaults to \eqn{r^{2}} = 0.95.
 #' @inheritParams conv_w_to_ml

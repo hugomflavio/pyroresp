@@ -5,7 +5,7 @@
 #'
 #' @param folder the path to the folder where the experiment data is stored
 #' @inheritParams read_pyro_raw_file
-#' @param phases_file a pattern to match for a phases file inside the folder
+#' @param phases a phases object. The output of \code{\link{process_phases}} 
 #' @inheritParams load_phases
 #' @param probe_info a dataframe containing animal information. This
 #'   dataframe must contain the following columns:
@@ -13,7 +13,7 @@
 #'     - mass         : The mass of the animal, in grams
 #'     - volume       : The non-corrected volume of the chamber + tubing
 #'     - probe        : The device-channel combination for the probe
-#'     - first_cycle   : The first cycle of valid data for that animal
+#'     - first_cycle  : The first cycle of valid data for that animal
 #'
 #' @return A list containing a phases dataframe and a pyro list with the
 #'   individual source data frames (in source_data), as well as a single,
@@ -120,7 +120,7 @@ load_pyro_data <- function(folder, date_format, tz,
 #' Perform standard processing operations to the pyro/phases files.
 #' 
 #' @param input The output of \code{\link{load_experiment}}
-#' @inheritParams clean_meas
+#' @inheritParams trim_resp
 #' @param convert_o2_unit_to The o2 unit desired for the final results
 #' @param patch_NAs Logical. Should NA values found in the raw data be patched?
 #'   Defaults to TRUE.

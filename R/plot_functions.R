@@ -45,11 +45,11 @@ plot_bg <- function(input, probes, linewidth = 1.5) {
 	p <- p + ggplot2::geom_line(ggplot2::aes(group = cycle, colour = cycle))
 	p <- p + ggplot2::geom_line(data = bg_lines, colour = 'red',
 															linewidth = linewidth)
-	if (!is.null(input$sim_params)) {
-		p <- plot_sim_watermark(p = p,
-						   x = input$trimmed$phase_time,
-						   y = input$trimmed$o2_delta)
-	}
+	# if (!is.null(input$sim_params)) {
+	# 	p <- plot_sim_watermark(p = p,
+	# 					   x = input$trimmed$phase_time,
+	# 					   y = input$trimmed$o2_delta)
+	# }
 	p <- p + ggplot2::theme_bw()
 	p <- p + ggplot2::labs(x = "Phase time", y = "Delta~O[2]")
 	p <- p + ggplot2::facet_wrap(. ~ probe, ncol = 4)
@@ -235,11 +235,11 @@ plot_deltas <- function(input, cycles, probes, verbose = TRUE) {
 	p <- ggplot2::ggplot(data = trimmed,
 		ggplot2::aes(x = date_time, Group = phase))
 
-	if (!is.null(input$sim_params)) {
-		p <- plot_sim_watermark(p = p,
-						   x = trimmed$date_time,
-						   y = trimmed$o2_delta)
-	}
+	# if (!is.null(input$sim_params)) {
+	# 	p <- plot_sim_watermark(p = p,
+	# 					   x = trimmed$date_time,
+	# 					   y = trimmed$o2_delta)
+	# }
 	p <- p + ggplot2::geom_path(ggplot2::aes(y = o2_delta), col = "royalblue")
 	p <- p + ggplot2::theme_bw()
 	p <- p + ggplot2::facet_wrap(.~idprobe)
@@ -292,16 +292,16 @@ plot_slopes <- function(input, cycles, probes, r2 = TRUE, verbose = TRUE) {
 
 	p <- ggplot2::ggplot(data = slopes, ggplot2::aes(x = date_time))
 
-	if (!is.null(input$sim_params)) {
-		aux <- range(slopes$slope_cor, na.rm = TRUE)
-		if (r2) {
-			# compensate for artificial y axis raise set below
-			aux[2] <- aux[1] + ((((aux[2] - aux[1]) / 2) * 1.15) * 2)
-		}
-		p <- plot_sim_watermark(p = p,
-						   x = slopes$date_time,
-						   y = aux)
-	}
+	# if (!is.null(input$sim_params)) {
+	# 	aux <- range(slopes$slope_cor, na.rm = TRUE)
+	# 	if (r2) {
+	# 		# compensate for artificial y axis raise set below
+	# 		aux[2] <- aux[1] + ((((aux[2] - aux[1]) / 2) * 1.15) * 2)
+	# 	}
+	# 	p <- plot_sim_watermark(p = p,
+	# 					   x = slopes$date_time,
+	# 					   y = aux)
+	# }
 
 	p <- p + ggplot2::geom_line(ggplot2::aes(y = slope_cor, col = 'slope_cor'))
 	p <- p + ggplot2::geom_point(ggplot2::aes(y = slope_cor, col = 'slope_cor'))
@@ -391,19 +391,19 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 
 	p <- ggplot2::ggplot()
 
-	if (!is.null(input$sim_params)) {
-		p <- plot_sim_watermark(p = p,
-						   x = mr$date_time,
-						   y = c(mr$mr_real, mr$mr_g))
-		mr_real_aux <- data.frame(mr_real = input$sim_params$real_mr,
-						          date_time = input$slopes$date_time)
-		p <- p + ggplot2::geom_line(data = mr_real_aux,
-									ggplot2::aes(x = date_time, y = mr_real),
-									linetype = "dashed")
-		p <- p + ggplot2::geom_point(data = mr_real_aux,
-									 ggplot2::aes(x = date_time, y = mr_real),
-									 shape = 1)
-	}
+	# if (!is.null(input$sim_params)) {
+	# 	p <- plot_sim_watermark(p = p,
+	# 					   x = mr$date_time,
+	# 					   y = c(mr$mr_real, mr$mr_g))
+	# 	mr_real_aux <- data.frame(mr_real = input$sim_params$real_mr,
+	# 					          date_time = input$slopes$date_time)
+	# 	p <- p + ggplot2::geom_line(data = mr_real_aux,
+	# 								ggplot2::aes(x = date_time, y = mr_real),
+	# 								linetype = "dashed")
+	# 	p <- p + ggplot2::geom_point(data = mr_real_aux,
+	# 								 ggplot2::aes(x = date_time, y = mr_real),
+	# 								 shape = 1)
+	# }
 
 	p <- p + ggplot2::geom_line(data = mr,
 								ggplot2::aes(x = date_time, y = mr_g))
@@ -411,20 +411,20 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 								 ggplot2::aes(x = date_time, y = mr_g))
 
 	if (!is.null(input$smr)) {
-		if (is.null(input$sim_params)) {
-			mr_cols <- grepl("mr_g", colnames(input$smr))
-			smr <- reshape2::melt(input$smr,
-								  id.vars = c("probe", "id"),
-								  measure.vars = colnames(input$smr)[mr_cols])
-			smr$Method <- sub("_mr_g", "", smr$variable)
-		} else {
+		# if (is.null(input$sim_params)) {
+		# 	mr_cols <- grepl("mr_g", colnames(input$smr))
+		# 	smr <- reshape2::melt(input$smr,
+		# 						  id.vars = c("probe", "id"),
+		# 						  measure.vars = colnames(input$smr)[mr_cols])
+		# 	smr$Method <- sub("_mr_g", "", smr$variable)
+		# } else {
 			mr_cols <- colnames(input$smr) %in% c("q0.2_mr_g", "q0.2_smr_real")
 			smr <- reshape2::melt(input$smr,
 								  id.vars = c("probe", "id"),
 								  measure.vars = colnames(input$smr)[mr_cols])
 			smr$Method <- sub("_mr_g", " estimated", smr$variable)
 			smr$Method <- sub("_smr_real", " real", smr$Method)			
-		}
+		# }
 		smr$idprobe <- paste0(smr$id, " (", smr$probe, ")")
 		smr$idprobe <- factor(smr$idprobe, levels = idprobe_levels)
 
@@ -614,9 +614,9 @@ plot_rolling_mr <- function(input, probes, cycles) {
 #' @export
 #'
 plot_experiment <- function(input, cycles, probe, verbose = FALSE) {
-	if (!is.null(input$sim_params) & missing(probe)) {
-		probe <- "S1"
-	}
+	# if (!is.null(input$sim_params) & missing(probe)) {
+	# 	probe <- "S1"
+	# }
 
 	if (length(probe) > 1) {
 		stop("Please select only one probe at a time.")
@@ -641,12 +641,12 @@ plot_experiment <- function(input, cycles, probe, verbose = FALSE) {
 
 	if (verbose) message('Plotting measurements')
 
-	if (is.null(input$sim_params)) {
-		p_meas <- plot_meas(input, cycles = cycles, probes = probe,
-							show_temp = TRUE, verbose = verbose)
-		p_meas <- p_meas + ggplot2::labs(x = '')
-		x_ruler <- p_meas
-	}
+	# if (is.null(input$sim_params)) {
+	# 	p_meas <- plot_meas(input, cycles = cycles, probes = probe,
+	# 						show_temp = TRUE, verbose = verbose)
+	# 	p_meas <- p_meas + ggplot2::labs(x = '')
+	# 	x_ruler <- p_meas
+	# }
 
 	if (verbose) message('Plotting plotting slopes')
 
@@ -654,11 +654,11 @@ plot_experiment <- function(input, cycles, probe, verbose = FALSE) {
 						    probes = probe, verbose = FALSE)
 	p_slopes <- p_slopes + ggplot2::xlab('')
 
-	if (is.null(input$sim_params)) {
-		p_slopes <- p_slopes + mimic_x_datetime(x_ruler)
-	} else {
+	# if (is.null(input$sim_params)) {
+	# 	p_slopes <- p_slopes + mimic_x_datetime(x_ruler)
+	# } else {
 		x_ruler <- p_slopes
-	}
+	# }
 
 	if (verbose) message('Plotting metabolic rate')
 
@@ -674,13 +674,13 @@ plot_experiment <- function(input, cycles, probe, verbose = FALSE) {
 			grid::textGrob('No valid MO2 values found'))
 	}
 
-	if (is.null(input$sim_params)) {
-		p_final <- p_pre + p_post + p_meas + p_slopes +
-			 	   p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD\nEE')
-	} else {
+	# if (is.null(input$sim_params)) {
+	# 	p_final <- p_pre + p_post + p_meas + p_slopes +
+	# 		 	   p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD\nEE')
+	# } else {
 		p_final <- p_pre + p_post + p_slopes +
 			 	   p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD')
-	}
+	# }
 	return(p_final)
 }
 
