@@ -111,12 +111,12 @@ assign_device_names <- function(folder, old_name, new_name, old_letter,
 																confirmed = FALSE, encoding = "ISO-8859-1") {
 	found_none <- TRUE
 
-	if (length(folder) == 0 || !dir.exists(folder)) {
-		stop('Could not find target folder')
+	if (length(folder) != 1) {
+		stop('"folder" should be a string of length 1.')
 	}
 
-	if (length(folder) > 1) {
-		stop('"folder" should be a string of length 1.')		
+	if (!dir.exists(folder)) {
+		stop('Could not find target folder')
 	}
 
 	if (!missing(old_name) & !missing(old_letter)) {
@@ -223,4 +223,30 @@ sem <- function(x, na.rm = TRUE){
     output <- sd(x) / sqrt(length(x))
  
     return(output)
+}
+
+auc <- function(x, y, zero = 0) {
+	units(zero) <- units(y)
+	if (length(x) != length(y)) {
+		stop("x and y must have same length")
+	}
+	aux <- as_units(0, value = units(x))
+	df <- data.frame(x = c(aux, x),
+	                 y = y[c(1, 1:length(y))] - zero)
+	df <- df[order(x), ]
+	df$auc <- 0
+
+	for (i in 2:nrow(df)) {
+		y_avg <- (df$y[i] + df$y[i-1])/2 # e.g. km/h
+		x_change <- df$x[i] - df$x[i-1] # e.g. h
+		df$auc[i] <- y_avg * x_change # cuts the h, so only km is left
+	}
+
+	# transfer units
+	dummy <- df$y[1] * df$x[1]
+	units(df$auc) <- units(dummy)
+
+	df$cumauc <- cumsum(df$auc)
+
+	return(df)
 }
