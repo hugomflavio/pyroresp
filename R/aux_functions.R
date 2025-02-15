@@ -60,14 +60,15 @@ check_arg_in_data <- function(arg, data, name, verbose = TRUE) {
 #' convert weight to volume in ml
 #'
 #' @param w a units object in either grams or kilograms
-#' @param d The density. defaults to 1 (1g = 1ml). Defaults to 1.
-#'  Higher densities lead to lower volumes, e.g. if d = 2, then 1g = 0.5ml.
+#' @param density The density. defaults to 1 (1 g = 1 ml).
+#'  Higher densities lead to lower volumes, e.g. if density = 2,
+#' 	then 1 g = 0.5 ml.
 #'
 #' @return a units object in ml
 #'
 #' @export
 #'
-conv_w_to_ml <- function(w, d = 1) {
+conv_w_to_ml <- function(w, density = 1) {
   if (!inherits(w, "units")) {
     stop("w must be a units class object")
   }
@@ -75,7 +76,7 @@ conv_w_to_ml <- function(w, d = 1) {
     stop("w must be either in grams or kilograms.")
   }
 
-  x <- as.numeric(w) / d
+  x <- as.numeric(w) / density
 
   if (as.character(units(w)) == "kg") {
     x <- x/1000
