@@ -15,7 +15,7 @@ replace_bg(input, replace, with)
 \item{with}{The probe to use as a reference for replacement.}
 }
 \value{
-the updated bg dataframe
+the updated input object
 }
 \description{
 Replace background readings for any given

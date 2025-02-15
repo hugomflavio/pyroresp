@@ -7,7 +7,7 @@
 calc_linear_bg(input, pre, post)
 }
 \arguments{
-\item{input}{A list containing cleaned oxygen data.
+\item{input}{A list containing trimmed oxygen data.
 Obtained through \code{\link{process_experiment}}.}
 
 \item{pre}{(optional) A data frame containing pre-test background readings.

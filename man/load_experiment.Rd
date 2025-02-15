@@ -8,9 +8,8 @@ load_experiment(
   folder,
   date_format,
   tz = Sys.timezone(),
-  phases_file = "CoolTerm",
+  phases,
   probe_info,
-  fix_phases = TRUE,
   encoding = "ISO-8859-1"
 )
 }
@@ -21,18 +20,15 @@ load_experiment(
 
 \item{tz}{The time zone of the data. Defaults to the system time zone.}
 
-\item{phases_file}{a pattern to match for a phases file inside the folder}
+\item{phases}{a phases object. The output of \code{\link{process_phases}}}
 
 \item{probe_info}{a dataframe containing animal information. This
 dataframe must contain the following columns:
-- id             : The ID of the animal
-- mass           : The mass of the animal, in grams
-- volume         : The non-corrected volume of the chamber + tubing
-- probe          : The device-channel combination for the probe
-- first_cycle     : The first cycle of valid data for that animal}
-
-\item{fix_phases}{Automatically correct any overlaps, gaps, or repeated
-phase names found in the file.}
+- id           : The ID of the animal
+- mass         : The mass of the animal, in grams
+- volume       : The non-corrected volume of the chamber + tubing
+- probe        : The device-channel combination for the probe
+- first_cycle  : The first cycle of valid data for that animal}
 
 \item{encoding}{the encoding of the source file. Defaults to "iso-8859-1",
 which is the encoding used by the pyro workbench software.}

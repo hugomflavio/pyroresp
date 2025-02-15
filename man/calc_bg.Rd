@@ -4,7 +4,7 @@
 \alias{calc_bg}
 \title{Calculate background values}
 \usage{
-calc_bg(input, method = c("mean", "first", "last"), smoothing)
+calc_bg(input, method = c("mean", "first", "last"))
 }
 \arguments{
 \item{input}{The output of \code{\link{process_experiment}}.}
@@ -14,15 +14,10 @@ be handled? One of:
 'mean'  : All the measured cycles are used for the calculations
 'first' : Only the first cycle is used for the calculations
 'last'  : Only the last cycle is used for the calculations}
-
-\item{smoothing}{Optional. If included, the function calculates a rolling
-average background, instead of the classical linear model with 0-intercept.
-Value in seconds.}
 }
 \value{
 The input list, with a new "bg" object.
 }
 \description{
-Can calculate linear background with forced 0 intercept, or rolling average
-background if smoothing is specified.
+Calculate background values
 }

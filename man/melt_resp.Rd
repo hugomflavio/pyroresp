@@ -4,19 +4,10 @@
 \alias{melt_resp}
 \title{Convert a human-friendly respirometry table to a computer-friendly format}
 \usage{
-melt_resp(input, probe_info)
+melt_resp(input)
 }
 \arguments{
-\item{input}{A dataframe with oxygen, temperature, pressure, and phase data.
-The output of \code{\link{merge_pyro_phases}}}
-
-\item{probe_info}{a dataframe containing animal information. This
-dataframe must contain the following columns:
-- id             : The ID of the animal
-- mass           : The mass of the animal, in grams
-- volume         : The non-corrected volume of the chamber + tubing
-- probe          : The device-channel combination for the probe
-- first_cycle     : The first cycle of valid data for that animal}
+\item{input}{A resp list containing a phased object.}
 }
 \description{
 Also appends additional probe info if provided.

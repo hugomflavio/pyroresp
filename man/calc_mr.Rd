@@ -4,14 +4,15 @@
 \alias{calc_mr}
 \title{Calculate metabolic rates}
 \usage{
-calc_mr(slope_data, d = 1)
+calc_mr(slope_data, density = 1)
 }
 \arguments{
 \item{slope_data}{a data frame obtained by using either the
 function \code{\link{calc_slopes}} or \code{\link{filter_r2}}}
 
-\item{d}{The density. defaults to 1 (1g = 1ml). Defaults to 1.
-Higher densities lead to lower volumes, e.g. if d = 2, then 1g = 0.5ml.}
+\item{density}{The density. defaults to 1 (1 g = 1 ml).
+Higher densities lead to lower volumes, e.g. if density = 2,
+then 1 g = 0.5 ml.}
 }
 \value{
 A data frame with mr_abs, bg, and mr_cor.

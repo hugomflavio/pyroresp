@@ -4,13 +4,10 @@
 \alias{process_mr}
 \title{Wrapper to perform metabolic rate calculations}
 \usage{
-process_mr(input, r2 = 0.95, G = 1:4, q = c(0.2, 0.25), p = 0.1, n = 10)
+process_mr(input, G = 1:4, q = c(0.2, 0.25), p = 0.1, n = 10)
 }
 \arguments{
 \item{input}{The output of \code{\link{subtract_bg}}}
-
-\item{r2}{numeric: minimal coefficient of determination (\eqn{r^{2}})
-for valid slopes. Default \eqn{r^{2}} = 0.95.}
 
 \item{G}{A vector of the number of clusters to use for MLND SMR estimations.
 Defaults to 1:4. Set to NULL to skip MLND method.}

@@ -4,13 +4,14 @@
 \alias{conv_w_to_ml}
 \title{convert weight to volume in ml}
 \usage{
-conv_w_to_ml(w, d = 1)
+conv_w_to_ml(w, density = 1)
 }
 \arguments{
 \item{w}{a units object in either grams or kilograms}
 
-\item{d}{The density. defaults to 1 (1g = 1ml). Defaults to 1.
-Higher densities lead to lower volumes, e.g. if d = 2, then 1g = 0.5ml.}
+\item{density}{The density. defaults to 1 (1 g = 1 ml).
+Higher densities lead to lower volumes, e.g. if density = 2,
+then 1 g = 0.5 ml.}
 }
 \value{
 a units object in ml

@@ -11,6 +11,8 @@ process_experiment(
   convert_o2_unit_to,
   patch_NAs = TRUE,
   patch_method = c("linear", "before", "after"),
+  zero_buffer = 3,
+  first_cycle = 1,
   min_temp,
   max_temp,
   start_time,
@@ -43,6 +45,18 @@ linear interpolation.
 the gap.
 'after'  to do the same as above but with the nearest value coming after
 the NA.}
+
+\item{zero_buffer}{when calculating the delta, a value must be assigned to 0.
+Traditionally, this is the very first value of the cycle. However, due to
+natural probe noise, this can cause an upward or downard shift to the whole
+delta line. This can be countered by calculating the mean of a few initial
+values, instead of relying only on the very first. zero_buffer sets how many
+values should be used to estimate the starting O2 concentration for the
+cycle.}
+
+\item{first_cycle}{either a vector of length one with the first cycle for all
+probes, or a named vector containing the first cycle for each individual
+probe (with the respective probe name).}
 
 \item{min_temp, max_temp}{For temperature ramp experiments. The minimum OR maximum temperatures
 that must be reached before data is considered valid. Discards all phases

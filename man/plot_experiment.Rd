@@ -4,7 +4,7 @@
 \alias{plot_experiment}
 \title{Wrapper to plot the whole experiment data for one probe}
 \usage{
-plot_experiment(input, cycles, probe, verbose = TRUE)
+plot_experiment(input, cycles, probe, verbose = FALSE)
 }
 \arguments{
 \item{input}{An experiment list with the experimental data.

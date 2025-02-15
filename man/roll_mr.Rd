@@ -4,7 +4,7 @@
 \alias{roll_mr}
 \title{Break down MR from a single cycle}
 \usage{
-roll_mr(input, probe, cycle, smoothing, d = 1)
+roll_mr(input, probe, cycle, smoothing, density = 1, r2 = 0.95)
 }
 \arguments{
 \item{input}{The output of \code{\link{process_mr}}}
@@ -16,8 +16,12 @@ roll_mr(input, probe, cycle, smoothing, d = 1)
 \item{smoothing}{How many points should be gathered for
 each calculation of the rolling MR}
 
-\item{d}{The density. defaults to 1 (1g = 1ml). Defaults to 1.
-Higher densities lead to lower volumes, e.g. if d = 2, then 1g = 0.5ml.}
+\item{density}{The density. defaults to 1 (1 g = 1 ml).
+Higher densities lead to lower volumes, e.g. if density = 2,
+then 1 g = 0.5 ml.}
+
+\item{r2}{Minimal coefficient of determination (\eqn{r^{2}})
+for valid slopes. Defaults to \eqn{r^{2}} = 0.95.}
 }
 \description{
 Allows determining how oxygen consumption evolved throughout a cycle.
