@@ -2,6 +2,10 @@
 
 Find out the main highlights of each update.
 
+## pyroresp 0.1.0
+
+This is the version that was used for the first publication ([D'Souza, Flávio and Wilkie, 2025](https://doi.org/10.1016/j.jglr.2025.102536)). It has many upgrades over the older code, as I had to apply many changes to obtain data required by reviewers. I won't list them all here; the package is not big enough to warrant that yet.
+
 ## pyroresp 0.0.3
 
 Changes:
