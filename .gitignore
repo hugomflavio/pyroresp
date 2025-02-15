@@ -34,5 +34,7 @@ rsconnect/
 
 R/live_tests.R
 R/unused_code.R
+R/sim_functions.R
+
 /doc/
 /Meta/

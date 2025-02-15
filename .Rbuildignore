@@ -1,4 +1,6 @@
 R/live_tests.R
+R/sim_functions.R
+R/unused_code.R
 .github
 .gitignore
 ^doc$
