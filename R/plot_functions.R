@@ -412,18 +412,18 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 
 	if (!is.null(input$smr)) {
 		# if (is.null(input$sim_params)) {
-		# 	mr_cols <- grepl("mr_g", colnames(input$smr))
-		# 	smr <- reshape2::melt(input$smr,
-		# 						  id.vars = c("probe", "id"),
-		# 						  measure.vars = colnames(input$smr)[mr_cols])
-		# 	smr$Method <- sub("_mr_g", "", smr$variable)
-		# } else {
-			mr_cols <- colnames(input$smr) %in% c("q0.2_mr_g", "q0.2_smr_real")
+			mr_cols <- grepl("mr_g", colnames(input$smr))
 			smr <- reshape2::melt(input$smr,
 								  id.vars = c("probe", "id"),
 								  measure.vars = colnames(input$smr)[mr_cols])
-			smr$Method <- sub("_mr_g", " estimated", smr$variable)
-			smr$Method <- sub("_smr_real", " real", smr$Method)			
+			smr$Method <- sub("_mr_g", "", smr$variable)
+		# } else {
+			# mr_cols <- colnames(input$smr) %in% c("q0.2_mr_g", "q0.2_smr_real")
+			# smr <- reshape2::melt(input$smr,
+			# 					  id.vars = c("probe", "id"),
+			# 					  measure.vars = colnames(input$smr)[mr_cols])
+			# smr$Method <- sub("_mr_g", " estimated", smr$variable)
+			# smr$Method <- sub("_smr_real", " real", smr$Method)			
 		# }
 		smr$idprobe <- paste0(smr$id, " (", smr$probe, ")")
 		smr$idprobe <- factor(smr$idprobe, levels = idprobe_levels)
@@ -642,10 +642,10 @@ plot_experiment <- function(input, cycles, probe, verbose = FALSE) {
 	if (verbose) message('Plotting measurements')
 
 	# if (is.null(input$sim_params)) {
-	# 	p_meas <- plot_meas(input, cycles = cycles, probes = probe,
-	# 						show_temp = TRUE, verbose = verbose)
-	# 	p_meas <- p_meas + ggplot2::labs(x = '')
-	# 	x_ruler <- p_meas
+		p_meas <- plot_meas(input, cycles = cycles, probes = probe,
+							show_temp = TRUE, verbose = verbose)
+		p_meas <- p_meas + ggplot2::labs(x = '')
+		x_ruler <- p_meas
 	# }
 
 	if (verbose) message('Plotting plotting slopes')
@@ -655,9 +655,9 @@ plot_experiment <- function(input, cycles, probe, verbose = FALSE) {
 	p_slopes <- p_slopes + ggplot2::xlab('')
 
 	# if (is.null(input$sim_params)) {
-	# 	p_slopes <- p_slopes + mimic_x_datetime(x_ruler)
+		p_slopes <- p_slopes + mimic_x_datetime(x_ruler)
 	# } else {
-		x_ruler <- p_slopes
+		# x_ruler <- p_slopes
 	# }
 
 	if (verbose) message('Plotting metabolic rate')
@@ -675,11 +675,11 @@ plot_experiment <- function(input, cycles, probe, verbose = FALSE) {
 	}
 
 	# if (is.null(input$sim_params)) {
-	# 	p_final <- p_pre + p_post + p_meas + p_slopes +
-	# 		 	   p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD\nEE')
+		p_final <- p_pre + p_post + p_meas + p_slopes +
+			 	   p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD\nEE')
 	# } else {
-		p_final <- p_pre + p_post + p_slopes +
-			 	   p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD')
+		# p_final <- p_pre + p_post + p_slopes +
+			 	   # p_mr + patchwork::plot_layout(design = 'AB\nCC\nDD')
 	# }
 	return(p_final)
 }
