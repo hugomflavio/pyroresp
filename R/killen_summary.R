@@ -82,7 +82,7 @@ killen_summary <- function(input) {
                 value = input$probe_info$volume),
     pt04 = list(description = "ratio of net resp volume",
                 value = pt04),
-    pt14 = list(description = "wait time",
+    pt14 = list(description = "wait time (in number of data points)",
                 value = attributes(input$trimmed)$wait),
     pt15 = list(description = "O2 probe calibration details",
                 value = pt15),
