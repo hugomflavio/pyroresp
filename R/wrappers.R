@@ -436,7 +436,7 @@ process_mr <- function(input, G = 1:4,
   input$mmr <- merge(input$probe_info, mmr_aux,
                       by = "probe", all = TRUE)
 
-  if (!is.null(input$bg$pre)) {
+  if (!is.null(input$smr) && !is.null(input$bg$pre)) {
     aux <- -input$mmr$mr_g * input$mmr$mass / input$smr$volume
     units(aux) <- units(input$bg$pre$bg$slope)
     bg_link <- match(input$mmr$probe, input$bg$pre$bg$probe)
@@ -444,7 +444,7 @@ process_mr <- function(input, G = 1:4,
     # units is now "1"; changing to percent automatically multiplies by 100
     units(input$mmr$pre_bg_pct) <- "percent"
   }
-  if (!is.null(input$bg$post)) {
+  if (!is.null(input$smr) && !is.null(input$bg$post)) {
     aux <- -input$mmr$mr_g * input$mmr$mass / input$smr$volume
     units(aux) <- units(input$bg$post$bg$slope)
     bg_link <- match(input$mmr$probe, input$bg$post$bg$probe)
