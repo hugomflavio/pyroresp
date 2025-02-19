@@ -11,7 +11,9 @@
 #' @return an updated mmr object, now containing 1) an updated mr object which
 #'   shows the delta MO2, and 2) a new auc object. The auc object contains both
 #'   the auc between each pair of points, and also the cumulative auc.
-#'
+#'  
+#' @export
+#' 
 calc_auc <- function(mmr, smr, smr_col, smr_buffer = 0.1) {
   if (is.null(mmr$mmr)) {
     stop("Couldn't find object 'mmr' inside mmr.",
@@ -87,6 +89,8 @@ calc_auc <- function(mmr, smr, smr_col, smr_buffer = 0.1) {
 #'
 #' @return the input object, with an 'epoc' sub-object
 #'
+#' @export
+#' 
 extract_epoc <- function(input, max_duration = Inf) {
   if (is.null(input$auc)) {
     stop("Couldn't find object 'auc' inside input.",
