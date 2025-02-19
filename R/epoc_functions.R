@@ -104,7 +104,7 @@ extract_epoc <- function(input, max_duration = Inf) {
                          epoc_duration = x$time_delta[epoc_ended])
     this_probe <- input$mr$probe == x$probe[1]
     this_time <- input$mr$time_since_chase == x$time_delta[epoc_ended]
-    output$fold_over_smr <- input$mr$fold_over_smr[this_probe & this_time]
+    output$fold_over_smr_at_end <- input$mr$fold_over_smr[this_probe & this_time]
     return(output)
   })
   the_epoc <- do.call(rbind, recipient)

@@ -5,7 +5,10 @@ Find out the main highlights of each update.
 ## Development
 
 Fixes:
-  * Fix crash if process_mr is run without any SMR method requested.
+  * Fix crash if `process_mr()` is run without any SMR method requested.
+
+Enhancements:
+  * Improve column names on output of `extract_epoc()`.
 
 ## pyroresp 0.1.0
 
