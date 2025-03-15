@@ -87,25 +87,30 @@ load_pyro_data <- function(folder, date_format, tz,
 
   source_data <- lapply(files, function(i) {
     read_pyro_raw_file(paste0(folder, '/ChannelData/', i),
-               date_format = date_format, tz = tz,
-               encoding = encoding)
+                       date_format = date_format, tz = tz,
+                       encoding = encoding)
   })
+  names(source_data) <- files
 
-  very_start <- min(as.POSIXct(sapply(source_data, function(i) {
-    as.character(min(i$date_time))
-  })))
+  start_aux <- sapply(source_data, function(i) {
+    as.character(min(i$date_time), tz = tz)
+  })
+  start_aux <- as.POSIXct(start_aux, tz = tz)
+  very_start <- min(start_aux)
 
-  very_end <- max(as.POSIXct(sapply(source_data, function(i) {
+  end_aux <- sapply(source_data, function(i) {
     as.character(max(i$date_time))
-  })))
+  })
+  end_aux <- as.POSIXct(end_aux, tz = tz)
+  very_end <- max(end_aux)
 
   recipient <- data.frame(date_time = seq(from = very_start,
-                      to = very_end, by = 1))
+                                          to = very_end, by = 1))
 
   for (i in source_data) {
     new_piece <-  i[!duplicated(i$date_time), ]
     recipient <- merge(recipient, new_piece,
-               by = 'date_time', all = TRUE)
+                       by = 'date_time', all = TRUE)
   }
 
   attributes(recipient)$latest_batch_start <- 1
