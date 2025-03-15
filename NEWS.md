@@ -7,10 +7,12 @@ Find out the main highlights of each update.
 Fixes:
   * Fix crash if `process_mr()` is run without any SMR method requested.
   * Export epoc functions.
+  * Take timezone into account when compiling the pyro files into a single table.
 
 Enhancements:
   * Improve column names on output of `extract_epoc()`.
   * New `calc_single_slope()` function.
+  * New argument `type` allows plotting either lines, points, or both in `plot_meas()`.
 
 ## pyroresp 0.1.0
 
