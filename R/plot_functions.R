@@ -72,10 +72,13 @@ plot_bg <- function(input, probes, linewidth = 1.5) {
 #' @export
 #'
 plot_meas <- function(input, cycles, probes,
-					  show_temp = FALSE, verbose = TRUE) {
+                      type = c("lines", "points", "both"),
+					  					show_temp = FALSE, verbose = TRUE) {
 	# ggplot variables
 	phase <- date_time <- temp <- o2 <- probe <- NULL
 	xmin <- xmax <- ymin <- ymax <- NULL
+
+	type <- match.arg(type)
 
 	meas <- input$melted
 	meas$idprobe <- paste0(meas$id, " (", meas$probe, ")")
@@ -144,9 +147,16 @@ plot_meas <- function(input, cycles, probes,
 									fill = "black", alpha = 0.1)
 	}
 
-	p <- p + ggplot2::geom_line(ggplot2::aes(x = date_time,
-											 y = o2, group = phase,
-											 colour = "o2"))
+	if (type %in% c("lines", "both")) {
+		p <- p + ggplot2::geom_line(ggplot2::aes(x = date_time,
+												 y = o2, group = phase,
+												 colour = "o2"))
+	}
+	if (type %in% c("points", "both")) {
+		p <- p + ggplot2::geom_point(ggplot2::aes(x = date_time,
+												 y = o2, group = phase,
+												 colour = "o2"))
+	}
 	p <- p + ggplot2::theme_bw()
 
 	if (show_temp) {
@@ -176,10 +186,18 @@ plot_meas <- function(input, cycles, probes,
 		  (y + a * c_factor - b) / c_factor # = x
 		}
 
-		p <- p + ggplot2::geom_line(ggplot2::aes(x = date_time,
-												 y = data.link(temp),
-												 group = phase,
-												 colour = "temp"))
+		if (type %in% c("lines", "both")) {
+			p <- p + ggplot2::geom_line(ggplot2::aes(x = date_time,
+													 y = data.link(temp),
+													 group = phase,
+													 colour = "temp"))
+		}
+		if (type %in% c("points", "both")) {
+			p <- p + ggplot2::geom_point(ggplot2::aes(x = date_time,
+													 y = data.link(temp),
+													 group = phase,
+													 colour = "temp"))
+		}
  		p <- p + ggplot2::scale_y_continuous(
 			sec.axis = ggplot2::sec_axis(trans = axis_link,
 		 	name = units::make_unit_label("Temperature", temp_unit))
