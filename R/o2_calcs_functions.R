@@ -1,13 +1,12 @@
 #' Prepare imported measurements for further analyses
 #'
 #' @param input the data frame containing imported oxygen measurements
-#' @param wait integer: the number of first rows for each measurement phase (M)
-#'  which should be reassigned to the wait phase (W). Note: If your
-#'  phase-tracking device already assigns a wait phase, set this to 0.
-#' @param cycle_max integer: Max allowed length (in number of rows) that each
-#'  cycle is allowed to have. Defaults to Inf (i.e. the whole cycle is used for
+#' @param meas_min integer: Minimum number of seconds a measurement phase must
+#'   have to be considered valid. Defaults to 10.
+#' @param meas_max integer: Max number of seconds to keep from each
+#'  measurement phase. Defaults to Inf (i.e. the whole phase is used for
 #'  metabolic rate estimations).
-#' @param auto_cut_last Should the last recorded phase be automatically cut?
+#' @param cut_last Should the last recorded phase be automatically cut?
 #'  useful if the experiment was terminated mid-measurement.
 #' @param first_cycle either a vector of length one with the first cycle for all
 #'  probes, or a named vector containing the first cycle for each individual
@@ -17,24 +16,28 @@
 #'
 #' @export
 #'
-trim_resp <- function(input, wait = 0, cycle_max = Inf,
-                      auto_cut_last = FALSE, first_cycle = 1){
+trim_resp <- function(input, meas_max = Inf, meas_min = 60,
+                      cut_last = FALSE, first_cycle = 1){
 
   if (is.null(input$melted)) {
     stop("Couldn't find object 'melted' inside input.",
          " Have you run melt_resp?", call. = FALSE)
   }
-  if (wait > cycle_max) {
-    stop("argument 'wait' must not be bigger than argument 'cycle_max'.")
-  }
+
+  units(meas_max) <- "s"
+  units(meas_min) <- "s"
+
+  # simplify object name
   melted <- input$melted
 
+  # keep only data for probes for which we have info, if possible
   if (!is.null(input$probe_info)) {
     target_probes <- input$probe_info$probe
   } else {
     target_probes <- unique(melted$probe)
   }
 
+  # expand firsy_cycle argument as needed
   if (length(first_cycle) == 1) {
     first_cycle <- rep(first_cycle, length(target_probes))
     names(first_cycle) <- target_probes
@@ -48,15 +51,16 @@ trim_resp <- function(input, wait = 0, cycle_max = Inf,
     }
   }
 
+  # split date and time
   melted$date <- as.Date(melted$date_time)
   melted$real_time <- chron::times(strftime(melted$date_time, "%H:%M:%S"))
 
-  # Removing Non-Measurement Data
+  # keep only M data
   melted <- melted[grepl("^M", melted$phase), ]
 
   # this is used just to ensure that the phases maintain their order,
   # even it they don't start at one or are not sorted at the start.
-  phase_order <- as.numeric(gsub("[M]", "", unique(melted$phase)))
+  phase_order <- as.numeric(gsub("M", "", unique(melted$phase)))
   phase_order <- order(phase_order)
 
   melted$phase <- factor(melted$phase, levels = unique(melted$phase)[phase_order])
@@ -66,55 +70,36 @@ trim_resp <- function(input, wait = 0, cycle_max = Inf,
 
   recipient <- lapply(target_probes, function(the_probe) {
 
+    # simplify object name
     trimmed_db <- by_probe[[the_probe]]
 
     # trim away the cycles that happen before the first_cycle
     trimmed_db <- trimmed_db[trimmed_db$cycle >= first_cycle[the_probe], ]
 
-    # Remove the final measurement phase if necessary (tail error)
+    # Remove the final measurement phase if desired
+    if (cut_last) {
+      all_but_last <- trimmed_db$phase != tail(unique(trimmed_db$phase), 1)
+      trimmed_db <- trimmed_db[all_but_last, ]
+      trimmed_db$phase <- droplevels(trimmed_db$phase)
+    }
+
+    # remove data beyond maximum phase duration
     if (nrow(trimmed_db) > 0) {
-      rows_per_phase <- table(trimmed_db$phase)
-      if (tail(rows_per_phase, 1) < wait | auto_cut_last) {
-        all_but_last <- trimmed_db$phase != tail(levels(trimmed_db$phase), 1)
-        trimmed_db <- trimmed_db[all_but_last, ]
-        trimmed_db$phase <- droplevels(trimmed_db$phase)
-      }
+      keep <- trimmed_db$phase_time <= meas_max
+      trimmed_db <- trimmed_db[keep, ]
     }
 
-    # remove the wait phases
-    if (nrow(trimmed_db) > 0 && wait != 0) {
-      # the code below grabs the 1:nrow vector, breaks it out by phase,
-      # and then selects only the rows that fall within the desired
-      # measurement periods.
-      index <- unlist(tapply(X = 1:nrow(trimmed_db),
-                             INDEX = trimmed_db$phase,
-                             FUN = function(x) {
-                                x[(wait + 1):min(length(x), cycle_max)]
-                             }),
-                      use.names = FALSE)
-      trimmed_db <- trimmed_db[index, ]
-    }
+    # remove cycles that are too short
+    if (nrow(trimmed_db) > 0) {
+      check <- aggregate(trimmed_db$phase_time, list(trimmed_db$phase), max)
+      colnames(check) <- c("phase", "time")
+      check$check <- check$time >= meas_min
+      keep <- trimmed_db$phase %in% check$phase[check$check]
+      trimmed_db <- trimmed_db[keep, ]
+    } 
 
-    # reset rownames
     if (nrow(trimmed_db) > 0) {
       row.names(trimmed_db) <- 1:nrow(trimmed_db)
-
-      # and now, by phase, calculate the passing time
-      aux <- split(trimmed_db, trimmed_db$phase)
-
-      aux <- aux[sapply(aux, nrow) > 0]
-
-      aux <- lapply(aux, function(x) {
-        x$phase_time <- as.numeric(difftime(
-                          time1 = x$date_time,
-                          time2 = x$date_time[1],
-                          units = 's'
-                        ))
-        units(x$phase_time) <- "s"
-
-        return(x)
-      })
-      trimmed_db <- as.data.frame(data.table::rbindlist(aux))
     }
 
     return(trimmed_db)
@@ -123,11 +108,9 @@ trim_resp <- function(input, wait = 0, cycle_max = Inf,
   output <- as.data.frame(data.table::rbindlist(recipient))
 
   if (nrow(output) == 0) {
-    stop("No measurement data found. Is wait too long?",
-         " Is the phase data correct?", call. = FALSE)
+    stop("No valid measurement data found. Is wait too long?",
+         " Is the phase information correct?", call. = FALSE)
   }
-
-  attributes(output)$wait <- paste(wait, "data points")
 
   input$trimmed <- output
 
@@ -167,10 +150,19 @@ calc_delta <- function(input, zero_buffer = 3) {
     by_phase <- split(trimmed_db, trimmed_db$phase)
 
     recipient <- lapply(by_phase, function(the_phase) {
-      the_phase$o2_delta <- the_phase$o2 - mean(the_phase$o2[1:zero_buffer],
-                                                na.rm = TRUE)
-      the_phase$airsat_delta <- the_phase$airsat - mean(the_phase$airsat[1:zero_buffer],
-                                                        na.rm = TRUE)
+      if (all(is.na(the_phase$o2))) {
+        # if everything is NA, then we're only going to get NAs
+        # in the end, so there's no point in trimming.
+        aux <- the_phase
+      } else {
+        # but if there's data among the NAs, we don't want
+        # NAs at the start to mess up our starting points.
+        aux <- the_phase[!is.na(the_phase$o2), ]
+      }
+      first_o2 <- mean(aux$o2[1:zero_buffer])
+      first_airsat <- mean(aux$airsat[1:zero_buffer])
+      the_phase$o2_delta <- the_phase$o2 - first_o2
+      the_phase$airsat_delta <- the_phase$airsat - first_airsat
       return(the_phase)
     })
 

@@ -12,12 +12,16 @@
 #' @export
 #'
 calc_mr <- function(slope_data, density = 1){
-  slope_data$mr_abs <- -(slope_data$slope_cor *
-                         (slope_data$volume - conv_w_to_ml(slope_data$mass,
-                                                           density))
-                        )
+  corrected_vol <- slope_data$volume - conv_w_to_ml(slope_data$mass, density)
+  slope_data$mr_abs <- -(slope_data$slope_cor * corrected_vol)
 
-  slope_data$mr_g <- slope_data$mr_abs / slope_data$mass
+  # temporarily drop and reassign units.
+  # this is needed to avoid {units} merging oxygen and animal
+  # weight when O2 is measured in weight (e.g. mg).
+  # see: https://github.com/r-quantities/units/issues/411
+  slope_data$mr_g <- drop_units(slope_data$mr_abs) / drop_units(slope_data$mass)
+  units(slope_data$mr_g) <- paste0(units(slope_data$mr_abs),
+                                   "/", units(slope_data$mass))
 
   return(slope_data)
 }
@@ -47,7 +51,9 @@ roll_mr <- function(input, probe, cycle, smoothing, density = 1, r2 = 0.95) {
   if (length(cycle) > 1) {
     stop("select only one cycle.")
   }
-
+  if (smoothing < 5) {
+    stop("smoothing value is too low.")
+  }
   # gather o2 values
   this_probe <- input$trimmed$probe == probe
   if (all(!this_probe)) {

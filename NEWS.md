@@ -2,17 +2,27 @@
 
 Find out the main highlights of each update.
 
-## Development
+## pyroresp 0.1.1
+
+Version used for microtag respirometry paper
 
 Fixes:
   * Fix crash if `process_mr()` is run without any SMR method requested.
   * Export epoc functions.
   * Take timezone into account when compiling the pyro files into a single table.
 
+Changes:
+  * Moved the creation of the wait phase to `assign_phases()`, as it seems a
+  more appropriate place to do that.
+  * Argument `cycle_max` in `process_experiment()` and `trim_resp()` has been
+  renamed to `meas_max`.
+
 Enhancements:
   * Improve column names on output of `extract_epoc()`.
   * New `calc_single_slope()` function.
   * New argument `type` allows plotting either lines, points, or both in `plot_meas()`.
+  * New argument `meas_min` allows setting the minimum duration a measurement
+  phase must have to be considered valid.
 
 ## pyroresp 0.1.0
 

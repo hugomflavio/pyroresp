@@ -30,7 +30,7 @@ process_phases <- function(phases, tz = Sys.timezone()) {
   phases <- split(phases, phases$chamber)
   phases <- lapply(phases, function(x) {
     x$start <- x$timestamp
-    x$stop <- c(x$timestamp[-1] - 1, Inf)
+    x$stop <- c(x$timestamp[-1], Inf)
     return(x)
   })
   return(phases)
@@ -45,12 +45,15 @@ process_phases <- function(phases, tz = Sys.timezone()) {
 #' 
 #' @param input A list containing imported experiment data.
 #'   The output from \code{\link{load_experiment}}
+#' @param wait integer: the number of seconds at the start of each measurement 
+#'   phase (M) that should be reassigned to the wait phase (W). Note: If your
+#'   phase-tracking device already assigns a wait phase, set this to 0.
 #' 
 #' @return An updated experiment list containing a phased data frame
 #' 
 #' @export
 #' 
-assign_phases <- function(input) {
+assign_phases <- function(input, wait) {
   pyr <- input$pyro$compiled_data
   phases <- input$phases
   check_probes_match(colnames(pyr), phases)
@@ -61,25 +64,67 @@ assign_phases <- function(input) {
     keyword <- paste0("_", prb, "$")
     if (any(grepl(keyword, colnames(pyr)))) {
 
-      new_col <- paste0("phase_", prb)
-      pyr[, new_col] <- "F0"
+      # initialize new columns
+      new_phase_col <- paste0("phase_", prb)
+      new_time_col <- paste0("phase_time_", prb)
+      pyr[, new_phase_col] <- NA_character_
+      pyr[, new_time_col] <- NA_real_
 
-      # assign phases
+      # assign device-given phases
       for (i in 1:nrow(phases[[prb]])) {
         check1 <- pyr$date_time >= phases[[prb]]$start[i]
-        check2 <- pyr$date_time <= phases[[prb]]$stop[i]
+        check2 <- pyr$date_time < phases[[prb]]$stop[i]
         this_phase <- check1 & check2
 
-        pyr[this_phase, new_col] <- paste0(phases[[prb]]$phase[i],
-                                           phases[[prb]]$cycle[i])
+        pyr[this_phase, new_phase_col] <- paste0(phases[[prb]]$phase[i],
+                                                 phases[[prb]]$cycle[i])
       }
 
-      NA_check <- is.na(pyr[, new_col])
+      # assign readings prior the first phase and after the last phase
+      fzeros <- pyr$date_time < phases[[prb]]$start[1]
+      pyr[fzeros, new_phase_col] <- "F0"
+      fInfs <- pyr$date_time > phases[[prb]]$stop[nrow(phases[[prb]])]
+      pyr[fInfs, new_phase_col] <- "FInf"
+
+      # look for any orphan readings
+      NA_check <- is.na(pyr[, new_phase_col])
       if (any(NA_check)) {
-        warning(sum(NA_check), " measurement(s) in probe ", prb,
+        warning(sum(NA_check), " reading(s) in probe ", prb,
                 " could not be assigned to a phase!",
                 call. = FALSE, immediate. = TRUE)
       }
+
+      # prepare to calculate phase times and assign wait phase
+      prb_data <- pyr[, c(1, which(grepl(keyword, colnames(pyr))))]
+      # before splitting, save the row order. This is important
+      # because F0 can happen across the whole dataset.
+      prb_data$row_order <- 1:nrow(prb_data)
+      by_phase <- split(prb_data, prb_data[, new_phase_col])
+
+      recipient <- lapply(by_phase, function(x) {
+        # calculate time within phase
+        x[, new_time_col] <- difftime(x$date_time, x$date_time[1], units = "s")
+        if (wait > 0 && grepl("M", x[1, new_phase_col])) {
+          # assign wait phase
+          these <- x[, new_time_col] < wait
+          x[, new_phase_col][these] <- sub("M", "W", x[, new_phase_col][these])
+          # adjust measurement phase times.
+          aux <- x[!these, ]
+          aux$new_times <- difftime(aux$date_time, aux$date_time[1], units = "s")
+          x[, new_time_col][!these] <- aux$new_times
+        }
+        return(x)
+      })
+      recipient <- do.call(rbind, recipient)
+      # remember to restore the original row order!
+      recipient <- recipient[order(recipient$row_order), ]
+
+      # transfer updated columns
+      pyr[, new_phase_col] <- recipient[, new_phase_col]
+      pyr[, new_time_col] <- recipient[, new_time_col]
+      # convert difftime to units so everything's in the same format
+      pyr[, new_time_col] <- as.numeric(pyr[, new_time_col])
+      units(pyr[, new_time_col]) <- "s"
 
       # export pyrodata object to outside of 
       # the lapply loop to save changes
@@ -92,16 +137,19 @@ assign_phases <- function(input) {
       new_col_order <<- c(new_col_order, relevant_columns)
     } else {
       warning("Phases present for probe ", prb,
-        " but no matching pyro data found. ",
-        "Disregarding this probe.",
-        call. = FALSE, immediate. = TRUE)
+              " but no matching pyro data found. ",
+              "Disregarding this probe.",
+              call. = FALSE, immediate. = TRUE)
     }
   })
   rm(tmp)
-  
+
+  # adjust column positions so probe info is all neatly organized
   pyr <- pyr[, new_col_order]
 
   input$phased <- pyr
+
+  attributes(input$phased)$wait <- paste(wait, "seconds")
 
   return(input)
 }

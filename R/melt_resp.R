@@ -48,21 +48,33 @@ melt_resp <- function(input) {
   sal_aux$variable <- NULL
   sal_aux$date_time <- NULL
 
+  phase_col_check <- grepl("phase_(?!time_)", colnames(phased),
+                           perl = TRUE)
   phase_aux <- reshape2::melt(phased,
     id.vars = "date_time",
-    measure.vars = colnames(phased)[grepl("phase_", colnames(phased))],
+    measure.vars = colnames(phased)[phase_col_check],
     value.name = "phase"
   )
   phase_aux$variable <- NULL
   phase_aux$date_time <- NULL
 
-  pre_output <- cbind(ox_aux, pressure_aux, temp_aux, sal_aux, phase_aux)
+  phase_time_aux <- reshape2::melt(phased,
+    id.vars = "date_time",
+    measure.vars = colnames(phased)[grepl("phase_time_", colnames(phased))],
+    value.name = "phase_time"
+  )
+  phase_time_aux$variable <- NULL
+  phase_time_aux$date_time <- NULL
+
+  pre_output <- cbind(ox_aux, pressure_aux, temp_aux, sal_aux, 
+                      phase_aux, phase_time_aux)
 
   if (any(grepl("ph_", colnames(phased)))) {
     pre_output$ph <- as.vector(t(phased[, grepl("ph_", colnames(phased))]))
   }
 
-  pre_output$cycle <- as.numeric(sub("F|M", "", as.character(pre_output$phase)))
+  cycle_strings <- sub("F|W|M", "", as.character(pre_output$phase))
+  pre_output$cycle <- as.numeric(cycle_strings)
 
   # if fish information is provided
   if (!is.null(input$probe_info)) {

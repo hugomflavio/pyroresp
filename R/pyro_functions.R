@@ -64,7 +64,7 @@ read_pyro_raw_file <- function(file, date_format,
     # combine first and last words as new column names
     colnames(output) <- tolower(paste0(a, '_', b))
 
-    # Ensure there are no duplicated colum names (data.table shenanigans)
+    # Ensure there are no duplicated column names (data.table shenanigans)
     output <- output[, !duplicated(colnames(output))]
 
     # extract salinity
@@ -111,6 +111,10 @@ read_pyro_raw_file <- function(file, date_format,
 
     o2_unit <- stringr::str_extract(table_header_string,
                                     "(?<=Oxygen \\()[^\\)]*")
+
+    if (grepl("%", o2_unit)) {
+      o2_unit <- "%"
+    }
     units(output$oxygen_main) <- o2_unit
 
     colnames(output)[2:5] <- paste0(c('temp_', 'pressure_', 'sal_', 'ox_'),

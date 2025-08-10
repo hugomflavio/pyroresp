@@ -105,7 +105,7 @@ plot_meas <- function(input, cycles, probes,
 		meas$idprobe <- droplevels(meas$idprobe)
 	}
 
-	if (any(grepl("F", meas$phase))) {
+	if (any(grepl("F|W", meas$phase))) {
 		paint_flush <- TRUE
 
 		aux <- split(meas, meas$idprobe)
@@ -120,7 +120,7 @@ plot_meas <- function(input, cycles, probes,
 			})
 			# --
 			names(aux2) <- rle(aux[[the_idprobe]]$phase)$values
-			aux2 <- aux2[grepl("F", names(aux2))]
+			aux2 <- aux2[grepl("F|W", names(aux2))]
 			# now extract start and end of phase
 			aux2 <- lapply(aux2, function(the_phase) {
 				data.frame(idprobe = the_idprobe,
@@ -137,6 +137,7 @@ plot_meas <- function(input, cycles, probes,
 	} else {
 		paint_flush <- FALSE
 	}
+
 
 	p <- ggplot2::ggplot(data = meas)
 

@@ -42,7 +42,17 @@ killen_summary <- function(input) {
   sem_aux <- sem(input$trimmed$temp, na.rm = TRUE)
   units(sem_aux) <- units(input$trimmed$temp)
   pt17 <- c(mean = mean(input$trimmed$temp, na.rm = TRUE),
-            sem = sem_aux)
+            sem = sem_aux,
+            min = min(input$trimmed$temp, na.rm = TRUE),
+            max = max(input$trimmed$temp, na.rm = TRUE))
+
+  # 22
+
+  pt22aux <- aggregate(input$trimmed$airsat,
+                       list(input$trimmed$phase),
+                       min, na.rm = TRUE)
+  pt22 <- c(mean = mean(pt22aux$x),
+            lowest = min(pt22aux$x))
 
   # 30
   pt30 <- sapply(input$bg, function(i) {
@@ -50,11 +60,11 @@ killen_summary <- function(input) {
           })
 
   # 36
-  pt36 <- gsub("_mr_cor", "",
-               colnames(input$input)[grepl("_mr_cor", colnames(input$input))])
+  pt36 <- gsub("_mr_g", "",
+               colnames(input$smr)[grepl("_mr_g", colnames(input$smr))])
 
   # 39
-  by_probe <- table(input$all_slopes$probe)
+  by_probe <- table(input$slopes$probe)
   by_probe <- as.data.frame(by_probe)
   colnames(by_probe) <- c("probe", "n_all")
   aux <- as.data.frame(table(input$good_slopes$probe))
@@ -85,16 +95,16 @@ killen_summary <- function(input) {
     pt15 = list(description = "O2 probe calibration details",
                 value = pt15),
     pt17 = list(description = "temperature details",
-                value = pt17),
-    pt22 = list(description = "minimum water oxygen levels reached",
-                value = min(input$trimmed$airsat, na.rm = TRUE)),
+                value = round(pt17, 3)),
+    pt22 = list(description = "lowest water oxygen levels reached",
+                value = round(pt22, 3)),
     pt24 = list(description = paste0("number of animals in this run",
                                      " (assuming one animal per chamber)"),
                 value = nrow(input$probe_info)),
     pt30 = list(description = "number of bg cycles used",
                 value = pt30),
     pt31 = list(description = "method used for bg correction over time",
-                value = attributes(input$trimmed)$correction_method),
+                value = attributes(input$slopes)$correction_method),
     pt35 = list(description = "duration over which MO2 was recorded",
                 value = difftime(max(input$trimmed$date_time),
                                  min(input$trimmed$date_time))),

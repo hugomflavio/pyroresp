@@ -6,24 +6,23 @@
 \usage{
 trim_resp(
   input,
-  wait = 0,
-  cycle_max = Inf,
-  auto_cut_last = FALSE,
+  meas_max = Inf,
+  meas_min = 60,
+  cut_last = FALSE,
   first_cycle = 1
 )
 }
 \arguments{
 \item{input}{the data frame containing imported oxygen measurements}
 
-\item{wait}{integer: the number of first rows for each measurement phase (M)
-which should be reassigned to the wait phase (W). Note: If your
-phase-tracking device already assigns a wait phase, set this to 0.}
-
-\item{cycle_max}{integer: Max allowed length (in number of rows) that each
-cycle is allowed to have. Defaults to Inf (i.e. the whole cycle is used for
+\item{meas_max}{integer: Max number of seconds to keep from each
+measurement phase. Defaults to Inf (i.e. the whole phase is used for
 metabolic rate estimations).}
 
-\item{auto_cut_last}{Should the last recorded phase be automatically cut?
+\item{meas_min}{integer: Minimum number of seconds a measurement phase must
+have to be considered valid. Defaults to 10.}
+
+\item{cut_last}{Should the last recorded phase be automatically cut?
 useful if the experiment was terminated mid-measurement.}
 
 \item{first_cycle}{either a vector of length one with the first cycle for all

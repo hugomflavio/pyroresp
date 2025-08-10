@@ -4,7 +4,14 @@
 \alias{plot_meas}
 \title{Plot raw measurements of oxygen and temp}
 \usage{
-plot_meas(input, cycles, probes, show_temp = FALSE, verbose = TRUE)
+plot_meas(
+  input,
+  cycles,
+  probes,
+  type = c("lines", "points", "both"),
+  show_temp = FALSE,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{input}{An experiment list with melted oxygen and temperature data.

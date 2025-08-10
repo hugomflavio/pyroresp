@@ -1,5 +1,5 @@
 Package: pyroresp
-Version: 0.1.0.9002
+Version: 0.1.1
 Title: Analyse respirometry data captured by firesting loggers
 Authors@R: person("Hugo", "Flávio", role = c("aut", "cre"), email = "hflavio@wlu.ca", comment = c(ORCID = "0000-0002-5174-1197"))
 Description: Designed to analyse intermittent-flow respirometry data. This is a sibling package of the FishResp R package.

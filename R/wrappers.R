@@ -92,33 +92,47 @@ load_pyro_data <- function(folder, date_format, tz,
   })
   names(source_data) <- files
 
-  start_aux <- sapply(source_data, function(i) {
-    as.character(min(i$date_time), tz = tz)
+  compiled_data <- compile_sources(source_data)
+
+  output <- list(source_data = source_data,
+                 compiled_data = compiled_data)
+  return(output)
+}
+
+#' merge a list of data sources into a single table using date_time
+#' as the link. Ensures there is one observation per second.
+#' 
+#' @param input a list of equally formatted tables
+#' 
+#' @return A table with the compiled data
+#' 
+#' @export
+#' 
+compile_sources <- function(input) {
+  start_aux <- sapply(input, function(i) {
+    as.character(min(i$date_time))
   })
-  start_aux <- as.POSIXct(start_aux, tz = tz)
+  start_aux <- as.POSIXct(start_aux, tz = attributes(input[[1]]$date_time)$tz[1])
   very_start <- min(start_aux)
 
-  end_aux <- sapply(source_data, function(i) {
+  end_aux <- sapply(input, function(i) {
     as.character(max(i$date_time))
   })
-  end_aux <- as.POSIXct(end_aux, tz = tz)
+  end_aux <- as.POSIXct(end_aux, tz = attributes(input[[1]]$date_time)$tz[1])
   very_end <- max(end_aux)
 
   recipient <- data.frame(date_time = seq(from = very_start,
                                           to = very_end, by = 1))
 
-  for (i in source_data) {
+  for (i in input) {
     new_piece <-  i[!duplicated(i$date_time), ]
     recipient <- merge(recipient, new_piece,
                        by = 'date_time', all = TRUE)
   }
 
   attributes(recipient)$latest_batch_start <- 1
-
-  output <- list(source_data = source_data, compiled_data = recipient)
-  return(output)
+  return(recipient)
 }
-
 
 #' Wrapper to get experiment data ready for further analyses
 #'
@@ -126,7 +140,7 @@ load_pyro_data <- function(folder, date_format, tz,
 #' 
 #' @param input The output of \code{\link{load_experiment}}
 #' @inheritParams trim_resp
-#' @param convert_o2_unit_to The o2 unit desired for the final results
+#' @param convert_o2_to The o2 unit desired for the final results
 #' @param patch_NAs Logical. Should NA values found in the raw data be patched?
 #'   Defaults to TRUE.
 #' @inheritParams patch_NAs
@@ -151,23 +165,24 @@ load_pyro_data <- function(folder, date_format, tz,
 #' 
 #' @export 
 #'
-process_experiment <- function(input, wait, cycle_max = Inf, convert_o2_unit_to,
-    patch_NAs = TRUE, patch_method = c("linear", "before", "after"),
+process_experiment <- function(input, wait, meas_max = Inf,
+    meas_min = 60, original_o2, convert_o2_to,
+    na_action = c("ignore", "linear", "before", "after", "remove"),
     zero_buffer = 3, first_cycle = 1,
     min_temp, max_temp, start_time, stop_time, from_cycle, to_cycle, 
     verbose = TRUE) {
 
-  patch_method <- match.arg(patch_method)
+  na_action <- match.arg(na_action)
 
   all_units <- c("hPa", "kPa", "torr", "mmHg", "inHg", "mg_per_l", 
            "ug_per_l", "umol_per_l", "mmol_per_l", "ml_per_l",
            "mg_per_kg", "ug_per_kg", "umol_per_kg", "mmol_per_kg", 
            "ml_per_kg")                                                            
 
-  if (!missing(convert_o2_unit_to) && !(convert_o2_unit_to %in% all_units)) {
-    stop("the 'convert_o2_unit_to' argument is not an acceptable unit. ",
-       "Please choose one of the following: ", 
-       paste(all_units, collapse = ", "))
+  if (!missing(convert_o2_to) && !(convert_o2_to %in% all_units)) {
+    stop("the 'convert_o2_to' argument is not an acceptable unit. ",
+         "Please choose one of the following: ", 
+         paste(all_units, collapse = ", "))
   }
 
   if (!missing(min_temp) & !missing(max_temp)) {
@@ -178,29 +193,43 @@ process_experiment <- function(input, wait, cycle_max = Inf, convert_o2_unit_to,
   if (verbose) {
     message("M: Merging pyroscience and phases file.")
   }
-  input <- assign_phases(input)
+  input <- assign_phases(input, wait = wait)
 
-  if (patch_NAs) {
+  if (na_action %in% c("linear", "before", "after")) {
       if (verbose) {
-        message("M: Patching NA's in the data.")
+        message("M: Addressing NA's in the data (na_action = \"",
+                na_action, "\".")
       }
-      input$phased <- patch_NAs(input$phased, patch_method = patch_method, 
+      input$phased <- patch_NAs(input$phased, patch_method = na_action, 
                                 verbose = FALSE)
   }
   
-  if (verbose) message("M: Melting resp data into computer-friendly format")
-    input <- melt_resp(input = input)
+  if (verbose) {
+    message("M: Melting resp data into computer-friendly format")
+  }
+  input <- melt_resp(input = input)
 
-  if (verbose) message("M: Removing unwanted data.")
-    input <- trim_resp(input = input, wait = wait,
-                       cycle_max = cycle_max,
+  if (na_action == "remove") {
+    if (verbose) {
+      message("M: Removing rows with no oxygen data (na_action = \"remove\").")
+    }
+    input$melted <- input$melted[!is.na(input$melted$o2), ]
+  }
+  if (verbose) message("M: Removing unwanted data (flush, wait, etc).")
+    input <- trim_resp(input = input,
+                       meas_max = meas_max,
+                       meas_min = meas_min,
                        first_cycle = first_cycle)
 
-  if (verbose) message("M: Calculating air saturation")
+  if (verbose) message("M: Calculating air saturation.")
 
   o2_conv_cols <- c("o2", "temp", "sal", "pressure")
   not_NA <- complete.cases(input$trimmed[, o2_conv_cols])
-  original_o2 <- sub("/", "_per_", units(input$trimmed$o2))
+  
+  if (missing(original_o2)) {
+    original_o2 <- sub("/", "_per_", units(input$trimmed$o2))
+    original_o2 <- gsub("L", "l", original_o2)
+  }
 
   input$trimmed$airsat <- NA
   input$trimmed$airsat[not_NA] <- 
@@ -214,11 +243,11 @@ process_experiment <- function(input, wait, cycle_max = Inf, convert_o2_unit_to,
     )
   units(input$trimmed$airsat) <- "percent"
 
-  if (!missing(convert_o2_unit_to)) {
+  if (!missing(convert_o2_to)) {
     
     if (verbose) {
       message("M: Converting oxygen unit from ", original_o2, 
-          " to ", convert_o2_unit_to, ".")  
+          " to ", convert_o2_to, ".")  
     }
     
     # if there is an o2 value but not all the others
@@ -235,12 +264,12 @@ process_experiment <- function(input, wait, cycle_max = Inf, convert_o2_unit_to,
       respirometry::conv_o2(
         o2 = input$trimmed$o2[not_NA],
         from = original_o2,
-        to = convert_o2_unit_to, 
+        to = convert_o2_to, 
         temp = as.numeric(input$trimmed$temp[not_NA]), 
         sal = as.numeric(input$trimmed$sal[not_NA]), 
         atm_pres = as.numeric(input$trimmed$pressure[not_NA])
       )
-    units(input$trimmed$o2) <- gsub("_per_", "/", convert_o2_unit_to)
+    units(input$trimmed$o2) <- gsub("_per_", "/", convert_o2_to)
 
     # convert from melted too, which is used for plot_meas
     not_NA <- complete.cases(input$melted[, o2_conv_cols])
@@ -250,12 +279,12 @@ process_experiment <- function(input, wait, cycle_max = Inf, convert_o2_unit_to,
       respirometry::conv_o2(
         o2 = input$melted$o2[not_NA],
         from = original_o2,
-        to = convert_o2_unit_to, 
+        to = convert_o2_to, 
         temp = as.numeric(input$melted$temp[not_NA]), 
         sal = as.numeric(input$melted$sal[not_NA]), 
         atm_pres = as.numeric(input$melted$pressure[not_NA])
       )
-    units(input$melted$o2) <- gsub("_per_", "/", convert_o2_unit_to)
+    units(input$melted$o2) <- gsub("_per_", "/", convert_o2_to)
   }
 
   if (verbose) message("M: Calculating deltas.")
