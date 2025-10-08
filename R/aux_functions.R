@@ -40,13 +40,13 @@ check_arg_in_data <- function(arg, data, name, verbose = TRUE) {
 		stop("Could not find requested ", name, " in the input", call. = FALSE)
 	}
 	if (verbose && any(!arg_check)) {
-		if (sum(arg_check) < 5) {
+		if (sum(!arg_check) < 5) {
 			warning("Could not find ", name, " ",
-					paste(arg[arg_check], collapse = ", "),
+					paste(arg[!arg_check], collapse = ", "),
 					" in the input. Discarding those.",
 					immediate. = TRUE, call. = FALSE)
 		} else {
-			warning("Could not find ", sum(arg_check),
+			warning("Could not find ", sum(!arg_check),
 					" of the requested ", name, " ",
 					"in the input. Discarding those.",
 					immediate. = TRUE, call. = FALSE)
