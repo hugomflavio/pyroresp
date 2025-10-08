@@ -37,7 +37,7 @@ trim_resp <- function(input, meas_max = Inf, meas_min = 60,
     target_probes <- unique(melted$probe)
   }
 
-  # expand firsy_cycle argument as needed
+  # expand first_cycle argument as needed
   if (length(first_cycle) == 1) {
     first_cycle <- rep(first_cycle, length(target_probes))
     names(first_cycle) <- target_probes
@@ -68,10 +68,18 @@ trim_resp <- function(input, meas_max = Inf, meas_min = 60,
   # the rest has to be done on a probe by probe basis.
   by_probe <- split(melted, melted$probe)
 
+  # the_probe <- target_probes[13]
   recipient <- lapply(target_probes, function(the_probe) {
+    # cat(the_probe, "\n")
 
     # simplify object name
     trimmed_db <- by_probe[[the_probe]]
+
+    if (is.null(trimmed_db)) {
+      warning("No data found for probe ", the_probe,
+              " skipping.", immediate. = TRUE, call. = FALSE)
+      return(NULL)
+    }
 
     # trim away the cycles that happen before the first_cycle
     trimmed_db <- trimmed_db[trimmed_db$cycle >= first_cycle[the_probe], ]

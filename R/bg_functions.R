@@ -148,122 +148,137 @@ replace_bg <- function(input, replace, with) {
 #'
 #' @export
 #'
-subtract_bg <- function (input, pre, post,
-                         method = c("pre", "post", "average",
-                                    "linear", "parallel", "none"),
-                         ref_probe){
+subtract_bg <- function(input, pre, post,
+                        method = c("pre", "post", "average",
+                                   "linear", "parallel", "none"),
+                        ref_probe){
 
   method <- match.arg(method)
 
   # bg object checks
-  check <- method %in% c("pre", "average", "linear", "exponential")
-  if (check) {
-    if (missing(pre)) {
-      stop("method = '", method, "' but argument pre is missing.")
+    check <- method %in% c("pre", "average", "linear", "exponential")
+    if (check) {
+      if (missing(pre)) {
+        stop("method = '", method, "' but argument pre is missing.")
+      }
+      probe_check <- unique(input$trimmed$probe) %in% unique(pre$bg$probe)
+      if (any(!probe_check)) {
+        stop("Could not find probe(s) ",
+             paste(unique(input$trimmed$probe)[!probe_check], collapse = ", "),
+             " in the pre background data.")
+      }
     }
-    probe_check <- unique(input$trimmed$probe) %in% unique(pre$bg$probe)
-    if (any(!probe_check)) {
-      stop("Could not find probe(s) ",
-           paste(unique(input$trimmed$probe)[!probe_check], collapse = ", "),
-           " in the pre background data.")
-    }
-  }
 
-  check <- method %in% c("post", "average", "linear", "exponential")
-  if (check) {
-    if (missing(post)) {
-      stop("method = '", method, "' but argument post is missing.")
+    check <- method %in% c("post", "average", "linear", "exponential")
+    if (check) {
+      if (missing(post)) {
+        stop("method = '", method, "' but argument post is missing.")
+      }
+      probe_check <- unique(input$trimmed$probe) %in% unique(post$bg$probe)
+      if (any(!probe_check)) {
+        stop("Could not find probe(s) ",
+             paste(unique(input$trimmed$probe)[!probe_check], collapse = ", "),
+             " in the post background data.")
+      }
     }
-    probe_check <- unique(input$trimmed$probe) %in% unique(post$bg$probe)
-    if (any(!probe_check)) {
-      stop("Could not find probe(s) ",
-           paste(unique(input$trimmed$probe)[!probe_check], collapse = ", "),
-           " in the post background data.")
-    }
-  }
 
-  if (method %in% c("average", "linear", "exponential")) {
-    if (units(pre$bg$slope) != units(post$bg$slope)) {
-      stop("It seems the two background readings are not in the same unit! (",
-           units(pre$bg$slope), " != ", units(post$bg$slope), ").")
+    if (method %in% c("average", "linear", "exponential")) {
+      if (units(pre$bg$slope) != units(post$bg$slope)) {
+        stop("It seems the two background readings are not in the same unit! (",
+             units(pre$bg$slope), " != ", units(post$bg$slope), ").")
+      }
     }
-  }
 
-  if (method == "parallel") {
-    if (missing(ref_probe)) {
-      stop("method = 'parallel' but argument ref_probe is missing.")
+    if (method == "parallel") {
+      if (is.null(input$probe_info)) {
+        stop("method = 'parallel' but input has no probe_info")
+      }
+      if (is.null(input$probe_info$ref)) {
+        stop("method = 'parallel' but probe_info has no ref column")
+      }
+      if (any(is.na(input$probe_info$ref))) {
+        stop("method = 'parallel' but probe_info$ref has NAs")
+      }
+      link <- match(input$probe_info$ref, input$probe_info$probe)
+      if (any(is.na(link))) {
+        stop("method = 'parallel' but not all values in probe_info$ref match probe names")
+      }
     }
-    if (!any(ref_probe %in% input$trimmed$probe)) {
-      stop("Could not find ref_probe in trimmed data.")
-    }
-  }
 
   # calculate bg objects to use downstream
-  if (method == "pre") {
-    my_bg <- pre$bg
-    input$bg$pre <- pre
-  }
+    if (method == "pre") {
+      my_bg <- pre$bg
+      input$bg$pre <- pre
+    }
 
-  if (method == "post") {
-    my_bg <- post$bg
-    input$bg$post <- post
-  }
+    if (method == "post") {
+      my_bg <- post$bg
+      input$bg$post <- post
+    }
 
-  if (method == "average") {
-    my_bg <- pre$bg
-    my_bg$slope <- (pre$bg$slope + post$bg$slope) / 2
-    input$bg$pre <- pre
-    input$bg$post <- post
-  }
+    if (method == "average") {
+      my_bg <- pre$bg
+      my_bg$slope <- (pre$bg$slope + post$bg$slope) / 2
+      input$bg$pre <- pre
+      input$bg$post <- post
+    }
 
-  if (method == "linear") {
-    my_bg <- calc_linear_bg(input = input, pre = pre, post = post)
-    input$bg$pre <- pre
-    input$bg$post <- post
-  }
+    if (method == "linear") {
+      my_bg <- calc_linear_bg(input = input, pre = pre, post = post)
+      input$bg$pre <- pre
+      input$bg$post <- post
+    }
 
-  if (method == "parallel") {
-    stop("this method needs to be updated for new slope bg output.")
-    # my_bg <- input$slopes[input$slopes$probe == ref_probe, ]
-    # my_bg$o2_bg_delta <- my_bg$o2_delta
-  }
+    if (method == "parallel") {
+      aux <- lapply(1:nrow(input$probe_info), function(i) {
+        prb <- input$probe_info$probe[i]
+        ref <- input$probe_info$ref[i]
+        bg_rows <- input$slopes$probe == ref
+
+        if (all(!bg_rows)) {
+          stop("No background data found for probe ", prb, ".",
+               " This probe cannot be used as a reference.", call. = FALSE)
+        }
+        
+        bg_cols <- c("probe", "cycle", "slope")
+        out <- input$slopes[bg_rows, bg_cols]
+        out$probe <- prb
+        colnames(out)[3] <- "slope_bg"
+        return(out)
+      })
+
+      my_bg <- do.call(rbind, aux)
+    }
 
   # make equivalent indexes
-  if (method %in% c("pre", "post", "average")) {
-    input$slopes$tmp_index <- input$slopes$probe
-    my_bg$tmp_index <- my_bg$probe
-  }
+    if (method %in% c("pre", "post", "average")) {
+      input$slopes$tmp_index <- input$slopes$probe
+      my_bg$tmp_index <- my_bg$probe
+    }
 
-  if (method %in% c("linear", "exponential")) {
-    input$slopes$tmp_index <- paste(input$slopes$probe,
-                                     input$slopes$cycle)
+    if (method %in% c("linear", "parallel", "exponential")) {
+      input$slopes$tmp_index <- paste(input$slopes$probe,
+                                       input$slopes$cycle)
 
-    my_bg$tmp_index <- paste(my_bg$probe,
-                             my_bg$cycle)
-  }
-
-  if (method == "parallel") {
-    stop("this method needs to be updated for new slope bg output.")
-    # my_bg$tmp_index <- paste(my_bg$cycle,
-    #                          my_bg$phase_time)
-
-    # input$slopes$tmp_index <- paste(input$slopes$cycle,
-    #                                  input$slopes$phase_time)
-  }
+      my_bg$tmp_index <- paste(my_bg$probe,
+                               my_bg$cycle)
+    }
 
   # transfer bg readings
-  if (method == "none") {
-    input$slopes$slope_bg <- 0
-    units(input$slopes$slope_bg) <- units(input$slopes$slope)
-  } else {
-    link <- match(input$slopes$tmp_index, my_bg$tmp_index)
-    input$slopes$slope_bg <- my_bg$slope[link]
-    input$slopes$tmp_index <- NULL
-  }
-  #-----------------------------------------------------------------------------
+    if (method == "none") {
+      input$slopes$slope_bg <- 0
+      units(input$slopes$slope_bg) <- units(input$slopes$slope)
+    } else {
+      link <- match(input$slopes$tmp_index, my_bg$tmp_index)
+      input$slopes$slope_bg <- my_bg$slope[link]
+      input$slopes$tmp_index <- NULL
+    }
+
+  #----------------------------------------------------------------------------#
+  
   input$slopes$slope_cor <- with(input$slopes, slope - slope_bg)
   input$slopes$bg_pct_of_cor <- with(input$slopes, slope_bg / slope_cor)
-  # units is now "1"; changing to percent automatically multiplies by 100
+  # units is "1", so changing to percent automatically multiplies by 100
   units(input$slopes$bg_pct_of_cor) <- "percent"
 
   attributes(input$slopes)$correction_method <- method

@@ -13,6 +13,9 @@ calc_single_slope(input, probe, cycle, skip = 0, max_duration = Inf)
 
 \item{cycle}{The cycle for which to calculate a slope}
 
+\item{skip}{Number of seconds to skip at the start
+of the phase.}
+
 \item{max_duration}{Only use points up to this time
 into the phase (in seconds). Defaults to Inf.}
 }

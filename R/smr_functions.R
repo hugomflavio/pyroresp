@@ -28,45 +28,64 @@ calc_smr <- function(mr, G = 1:4, q = c(0.2, 0.25), p = 0.1, n = 10){
   issue_low_n_warning <- TRUE
 
   recipient <- lapply(by_probe, function(the_probe) {
-    output <- the_probe[1, c("probe", "id", "mass")]
+
+    if ("mass" %in% colnames(the_probe)) {
+      output <- the_probe[1, c("probe", "id", "mass")]
+      the_probe$input_mr <- the_probe$mr_g
+    } else {
+      output <- the_probe[1, c("probe", "id")]
+      the_probe$input_mr <- the_probe$mr_abs
+    }
 
     # MLND
     if (!is.null(G)) {
-      the_mclust <- mclust::Mclust(the_probe$mr_g, G = G, verbose = FALSE)
-      if (is.null(the_mclust)) {
-        warning("mclust method failed for probe ", the_probe$probe[1],
-                ". Skipping MLND method. Low sample size?",
-                immediate. = TRUE, call. = FALSE)
-        output$mlnd_mr_g <- NA
-        units(output$mlnd_mr_g) <- units(the_probe$mr_g)
-        output$mlnd_cv <- NA
-      } else {
-        cl <- the_mclust$classification
-        clusters <- as.data.frame(table(cl))
-        clusters$cl <- as.numeric(levels(clusters$cl))
-        valid <- clusters$Freq >= 0.1 * sum(clusters$Freq)
-        the_cl <- min(clusters$cl[valid])
-        mlnd_index <- the_mclust$classification == the_cl
-        mlnd <- the_mclust$parameters$mean[the_cl]
+      calc_mlnd <- TRUE
+      if (nrow(the_probe) < 10) {
+        message("Skipping MLND method for probe ", the_probe$probe[1], 
+                " (less than 10 values).")
+        calc_mlnd <- FALSE
+      }
+      if (calc_mlnd && length(unique(the_probe$input_mr)) == 1) {
+        message("Skipping SMR calculations for probe ", the_probe$probe[1], 
+                " (only one unique value).")
+        calc_mlnd <- FALSE
+      }
+      if (calc_mlnd) {
+        the_mclust <- mclust::Mclust(the_probe$input_mr, G = G, verbose = FALSE)
+        if (is.null(the_mclust)) {
+          warning("mclust method failed for probe ", the_probe$probe[1],
+                  ". Skipping MLND method. Low sample size?",
+                  immediate. = TRUE, call. = FALSE)
+          output$mlnd_mr <- NA
+          units(output$mlnd_mr) <- units(the_probe$input_mr)
+          output$mlnd_cv <- NA
+        } else {
+          cl <- the_mclust$classification
+          clusters <- as.data.frame(table(cl))
+          clusters$cl <- as.numeric(levels(clusters$cl))
+          valid <- clusters$Freq >= 0.1 * sum(clusters$Freq)
+          the_cl <- min(clusters$cl[valid])
+          mlnd_index <- the_mclust$classification == the_cl
+          mlnd <- the_mclust$parameters$mean[the_cl]
 
-        output$mlnd_mr_g <- unname(mlnd)
-        units(output$mlnd_mr_g) <- units(the_probe$mr_g)
+          output$mlnd_mr <- unname(mlnd)
+          units(output$mlnd_mr) <- units(the_probe$input_mr)
 
-        output$mlnd_cv <- sd(the_probe$mr_g[mlnd_index])/mlnd * 100
-        attributes(output)$mlnd_phases <- the_probe$phase[mlnd_index]
+          output$mlnd_cv <- sd(the_probe$input_mr[mlnd_index])/mlnd * 100
+          attributes(output)$mlnd_phases <- the_probe$phase[mlnd_index]
+        }
       }
     }
 
     # QUANTILES
     if (!is.null(q)) {
       for (i in q) {
-        output[, paste0("q", i, "_mr_g")] <- quantile(the_probe$mr_g, i)
-
+        output[, paste0("q", i, "_mr")] <- quantile(the_probe$input_mr, i)
       }
     }
 
     if (!is.null(p)) {
-      aux <- the_probe[order(the_probe$mr_g), ]
+      aux <- the_probe[order(the_probe$input_mr), ]
       if (nrow(aux) > 5) { # drop the lowest five values to avoid outlier effects
         aux <- aux[-(1:5), ]
       } else {
@@ -84,15 +103,15 @@ calc_smr <- function(mr, G = 1:4, q = c(0.2, 0.25), p = 0.1, n = 10){
 
       for (i in p) {
         aux <- aux[1:ceiling(nrow(aux) * i), ]
-        output[, paste0("p", i, "_mr_g")] <- mean(aux$mr_g)
-        attributes(output)[paste0("p", i, "_phases")] <- aux$phases
+        output[, paste0("p", i, "_mr")] <- mean(aux$input_mr)
+        attributes(output)[paste0("p", i, "_phase")] <- aux$phase
       }
     }
 
     if (!is.null(n)) {
-      aux <- the_probe[order(the_probe$mr_g), ]
+      aux <- the_probe[order(the_probe$input_mr), ]
       for (i in n) {
-        new_col <- paste0("low", i, "_mr_g")
+        new_col <- paste0("low", i, "_mr")
         new_attr <- paste0("low", i, "_phases")
         if (nrow(aux) < n) {
           warning(paste0("Could not find enough measurements for probe ",
@@ -100,11 +119,11 @@ calc_smr <- function(mr, G = 1:4, q = c(0.2, 0.25), p = 0.1, n = 10){
                     " smr method. Skipping."),
                   immediate. = TRUE, call. = FALSE)
           output[, new_col] <- NA
-          units(output[, new_col]) <- units(the_probe$mr_g)
+          units(output[, new_col]) <- units(the_probe$input_mr)
         } else {
           aux <- aux[1:i, ]
-          output[, new_col] <- mean(aux$mr_g)
-          attributes(output)[new_attr] <- aux$phases
+          output[, new_col] <- mean(aux$input_mr)
+          attributes(output)[[new_attr]] <- aux$phase
         }
       }
     }

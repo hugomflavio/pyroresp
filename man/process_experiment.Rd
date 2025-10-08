@@ -6,7 +6,8 @@
 \usage{
 process_experiment(
   input,
-  wait,
+  wait = 0,
+  tail_trim = 0,
   meas_max = Inf,
   meas_min = 60,
   original_o2,
@@ -26,6 +27,13 @@ process_experiment(
 \arguments{
 \item{input}{The output of \code{\link{load_experiment}}}
 
+\item{wait}{integer: the number of seconds at the start of each measurement
+phase (M) that should be reassigned to the wait phase (W). Note: If your
+phase-tracking device already assigns a wait phase, set this to 0.}
+
+\item{tail_trim}{integer: The number of seconds at the end of each
+measurement phase (M) that should be discarded.}
+
 \item{meas_max}{integer: Max number of seconds to keep from each
 measurement phase. Defaults to Inf (i.e. the whole phase is used for
 metabolic rate estimations).}
@@ -33,7 +41,17 @@ metabolic rate estimations).}
 \item{meas_min}{integer: Minimum number of seconds a measurement phase must
 have to be considered valid. Defaults to 10.}
 
-\item{convert_o2_to}{The o2 unit desired for the final results}
+\item{original_o2}{The o2 unit the data was captured in.}
+
+\item{convert_o2_to}{The o2 unit desired for the final results.}
+
+\item{na_action}{One of:
+'linear' to capture the nearest before and after non-NA values and make a
+linear interpolation.
+'before' to find the nearest non-NA value before the NA and use it to fill
+the gap.
+'after'  to do the same as above but with the nearest value coming after
+the NA.}
 
 \item{zero_buffer}{when calculating the delta, a value must be assigned to 0.
 Traditionally, this is the very first value of the cycle. However, due to
@@ -60,9 +78,6 @@ YYYY-MM-DD HH:MM:SS format.}
 of these arguments at the same time. Input must be numeric.}
 
 \item{verbose}{Logical. Should steps being taken be detailed with messages.
-Defaults to TRUE.}
-
-\item{patch_NAs}{Logical. Should NA values found in the raw data be patched?
 Defaults to TRUE.}
 }
 \value{

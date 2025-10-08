@@ -4,14 +4,14 @@
 \alias{patch_NAs}
 \title{Fill in missing datapoints using the nearest available data.}
 \usage{
-patch_NAs(input, patch_method = c("linear", "before", "after"), verbose = TRUE)
+patch_NAs(input, na_action = c("linear", "before", "after"), verbose = TRUE)
 }
 \arguments{
 \item{input}{A dataframe containing Timestamps on the first column and
 matching data on the remaining. If input contains a "phase" column, it will
 be transported to the output unchanged.}
 
-\item{patch_method}{One of:
+\item{na_action}{One of:
 'linear' to capture the nearest before and after non-NA values and make a
 linear interpolation.
 'before' to find the nearest non-NA value before the NA and use it to fill

@@ -4,7 +4,7 @@
 \alias{assign_phases}
 \title{Merge the pyro data with the phases.}
 \usage{
-assign_phases(input, wait)
+assign_phases(input, wait, tail_trim)
 }
 \arguments{
 \item{input}{A list containing imported experiment data.
@@ -13,6 +13,9 @@ The output from \code{\link{load_experiment}}}
 \item{wait}{integer: the number of seconds at the start of each measurement
 phase (M) that should be reassigned to the wait phase (W). Note: If your
 phase-tracking device already assigns a wait phase, set this to 0.}
+
+\item{tail_trim}{integer: The number of seconds at the end of each
+measurement phase (M) that should be discarded.}
 }
 \value{
 An updated experiment list containing a phased data frame

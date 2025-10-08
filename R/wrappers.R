@@ -33,7 +33,13 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
   }
 
   if (!missing(probe_info)) {
-    required_cols <- c("id", "mass", "volume", "probe")
+    if (!"mass" %in% colnames(probe_info)) {
+      warning("No column 'mass' found in the probe_info.",
+              " Won't correct chamber volume nor calculate",
+              " mass-corrected MO2.",
+              immediate. = TRUE, call. = FALSE)
+    }
+    required_cols <- c("id", "volume", "probe")
     cols_missing <- !(required_cols %in% colnames(probe_info))
     if (any(cols_missing)) {
       stop("The following required columns are missing ",
@@ -109,25 +115,35 @@ load_pyro_data <- function(folder, date_format, tz,
 #' @export
 #' 
 compile_sources <- function(input) {
-  start_aux <- sapply(input, function(i) {
-    as.character(min(i$date_time))
-  })
-  start_aux <- as.POSIXct(start_aux, tz = attributes(input[[1]]$date_time)$tz[1])
-  very_start <- min(start_aux)
+  # start_aux <- sapply(input, function(i) {
+  #   as.character(min(i$date_time))
+  # })
+  # start_aux <- as.POSIXct(start_aux, tz = attributes(input[[1]]$date_time)$tz[1])
+  # very_start <- min(start_aux)
 
-  end_aux <- sapply(input, function(i) {
-    as.character(max(i$date_time))
-  })
-  end_aux <- as.POSIXct(end_aux, tz = attributes(input[[1]]$date_time)$tz[1])
-  very_end <- max(end_aux)
+  # end_aux <- sapply(input, function(i) {
+  #   as.character(max(i$date_time))
+  # })
+  # end_aux <- as.POSIXct(end_aux, tz = attributes(input[[1]]$date_time)$tz[1])
+  # very_end <- max(end_aux)
 
-  recipient <- data.frame(date_time = seq(from = very_start,
-                                          to = very_end, by = 1))
+  # recipient <- data.frame(date_time = seq(from = very_start,
+                                          # to = very_end, by = 1))
 
-  for (i in input) {
-    new_piece <-  i[!duplicated(i$date_time), ]
-    recipient <- merge(recipient, new_piece,
-                       by = 'date_time', all = TRUE)
+  # for (i in input) {
+  #   new_piece <-  i[!duplicated(i$date_time), ]
+  #   recipient <- merge(recipient, new_piece,
+  #                      by = 'date_time', all = TRUE)
+  # }
+
+  recipient <- input[[1]]
+  head(recipient)
+  recipient <- recipient[!duplicated(recipient$date_time), ]
+  if (length(input) > 1) {
+    for (i in input[-1]) {
+      i <- i[!duplicated(i$date_time), ]
+      recipient <- merge(recipient, i, by = 'date_time', all = TRUE)
+    }
   }
 
   attributes(recipient)$latest_batch_start <- 1
@@ -138,13 +154,13 @@ compile_sources <- function(input) {
 #'
 #' Perform standard processing operations to the pyro/phases files.
 #' 
-#' @param input The output of \code{\link{load_experiment}}
 #' @inheritParams trim_resp
-#' @param convert_o2_to The o2 unit desired for the final results
-#' @param patch_NAs Logical. Should NA values found in the raw data be patched?
-#'   Defaults to TRUE.
+#' @inheritParams assign_phases
 #' @inheritParams patch_NAs
 #' @inheritParams calc_delta
+#' @param input The output of \code{\link{load_experiment}}
+#' @param original_o2 The o2 unit the data was captured in.
+#' @param convert_o2_to The o2 unit desired for the final results.
 #' @param min_temp,max_temp 
 #'   For temperature ramp experiments. The minimum OR maximum temperatures
 #'   that must be reached before data is considered valid. Discards all phases
@@ -165,11 +181,11 @@ compile_sources <- function(input) {
 #' 
 #' @export 
 #'
-process_experiment <- function(input, wait, meas_max = Inf,
-    meas_min = 60, original_o2, convert_o2_to,
+process_experiment <- function(input, wait = 0, tail_trim = 0,
+    meas_max = Inf, meas_min = 60, original_o2, convert_o2_to,
     na_action = c("ignore", "linear", "before", "after", "remove"),
     zero_buffer = 3, first_cycle = 1,
-    min_temp, max_temp, start_time, stop_time, from_cycle, to_cycle, 
+    min_temp, max_temp, start_time, stop_time, from_cycle, to_cycle,
     verbose = TRUE) {
 
   na_action <- match.arg(na_action)
@@ -193,14 +209,14 @@ process_experiment <- function(input, wait, meas_max = Inf,
   if (verbose) {
     message("M: Merging pyroscience and phases file.")
   }
-  input <- assign_phases(input, wait = wait)
+  input <- assign_phases(input, wait = wait, tail_trim = tail_trim)
 
   if (na_action %in% c("linear", "before", "after")) {
       if (verbose) {
         message("M: Addressing NA's in the data (na_action = \"",
                 na_action, "\".")
       }
-      input$phased <- patch_NAs(input$phased, patch_method = na_action, 
+      input$phased <- patch_NAs(input$phased, na_action = na_action, 
                                 verbose = FALSE)
   }
   
@@ -374,17 +390,19 @@ process_experiment <- function(input, wait, meas_max = Inf,
 
 #' Wrapper to get calculate slopes, correct them, and filter them
 #'
-#' @param input The output of \code{\link{process_experiment}}
 #' @inheritParams subtract_bg
 #' @inheritParams filter_r2
+#' @inheritParams calc_slopes
+#' @param input The output of \code{\link{process_experiment}}
 #' 
 #' @return An updated experiment list, containing two new objects; one with
 #'   all the slopes, and another with the slopes that pass the r2 threshold.
 #' 
 #' @export 
 #'
-process_slopes <- function(input, r2 = 0.95, pre, post, method) {
-    input <- calc_slopes(input)
+process_slopes <- function(input, r2 = 0.95, pre, post, method,
+                           correct_for_volume = FALSE) {
+    input <- calc_slopes(input, correct_for_volume = correct_for_volume)
   
     input <- subtract_bg(input = input, pre = pre,
                          post = post, method = method)
@@ -425,11 +443,13 @@ process_mr <- function(input, G = 1:4,
   if (length(the_seconds) > 0) {
     units(input$mr$mr_abs)$denominator[the_seconds] <- "h"
   }
-  the_seconds <- which(units(input$mr$mr_g)$denominator == "s")
-  if (length(the_seconds) > 0) {
-    units(input$mr$mr_g)$denominator[the_seconds] <- "h"
+  if ("mr_g" %in% colnames(input$mr)) {
+    the_seconds <- which(units(input$mr$mr_g)$denominator == "s")
+    if (length(the_seconds) > 0) {
+      units(input$mr$mr_g)$denominator[the_seconds] <- "h"
+    }
   }
-  
+
   if (is.null(G) && is.null(q) && is.null(p) && is.null(n)) {
     input$smr <- NULL
   } else {
@@ -439,9 +459,9 @@ process_mr <- function(input, G = 1:4,
     input$smr <- merge(input$probe_info, smr_aux, 
                         by = "probe", all = TRUE)
 
-    smr_cols <- colnames(input$smr)[grepl("_mr_g", colnames(input$smr))]
+    smr_cols <- colnames(input$smr)[grepl("_mr", colnames(input$smr))]
     for (i in smr_cols) {
-      prefix <- sub("_mr_g", "", i)
+      prefix <- sub("_mr", "", i)
       if (!is.null(input$bg$pre)) {
         new_col <- paste0(prefix, "pre_bg_pct")
         aux <- input$smr[, i]
@@ -462,6 +482,7 @@ process_mr <- function(input, G = 1:4,
         # units is now "1"; changing to percent automatically multiplies by 100
         units(input$smr[, new_col]) <- "percent"
       }
+      # how to make a bg summary when using a reference chamber?
     }
   }
   
@@ -486,6 +507,7 @@ process_mr <- function(input, G = 1:4,
     # units is now "1"; changing to percent automatically multiplies by 100
     units(input$mmr$post_bg_pct) <- "percent"
   }
+  # how to make a bg summary when using a reference chamber?
 
   return(input)
 }

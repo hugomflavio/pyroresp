@@ -22,6 +22,8 @@ The output of \code{\link{process_experiment}} or
 
 \item{probes}{A string of which probes to plot}
 
+\item{type}{Should the plot show only "lines", "points", or "both"?}
+
 \item{show_temp}{Should the temperature recordings be plotted?}
 
 \item{verbose}{should argument warnings be displayed?}

@@ -12,16 +12,20 @@
 #' @export
 #'
 calc_mr <- function(slope_data, density = 1){
-  corrected_vol <- slope_data$volume - conv_w_to_ml(slope_data$mass, density)
-  slope_data$mr_abs <- -(slope_data$slope_cor * corrected_vol)
+  if ("mass" %in% colnames(slope_data)) {
+    vol <- slope_data$volume - conv_w_to_ml(slope_data$mass, density)
+    slope_data$mr_abs <- -(slope_data$slope_cor * vol)
 
-  # temporarily drop and reassign units.
-  # this is needed to avoid {units} merging oxygen and animal
-  # weight when O2 is measured in weight (e.g. mg).
-  # see: https://github.com/r-quantities/units/issues/411
-  slope_data$mr_g <- drop_units(slope_data$mr_abs) / drop_units(slope_data$mass)
-  units(slope_data$mr_g) <- paste0(units(slope_data$mr_abs),
-                                   "/", units(slope_data$mass))
+    # temporarily drop and reassign units.
+    # this is needed to avoid {units} merging oxygen and animal
+    # weight when O2 is measured in weight (e.g. mg).
+    # see: https://github.com/r-quantities/units/issues/411
+    slope_data$mr_g <- drop_units(slope_data$mr_abs) / drop_units(slope_data$mass)
+    units(slope_data$mr_g) <- paste0(units(slope_data$mr_abs),
+                                     "/", units(slope_data$mass))
+  } else {
+    slope_data$mr_abs <- -slope_data$slope_cor
+  }
 
   return(slope_data)
 }

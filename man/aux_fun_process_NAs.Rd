@@ -4,7 +4,7 @@
 \alias{aux_fun_process_NAs}
 \title{auxiliary function of patch_NAs}
 \usage{
-aux_fun_process_NAs(nas, col, input, patch_method, verbose)
+aux_fun_process_NAs(nas, col, input, na_action, verbose)
 }
 \arguments{
 \item{nas}{A table with the start and stop rows of the NA intervals}
@@ -15,7 +15,7 @@ aux_fun_process_NAs(nas, col, input, patch_method, verbose)
 matching data on the remaining. If input contains a "phase" column, it will
 be transported to the output unchanged.}
 
-\item{patch_method}{One of:
+\item{na_action}{One of:
 'linear' to capture the nearest before and after non-NA values and make a
 linear interpolation.
 'before' to find the nearest non-NA value before the NA and use it to fill

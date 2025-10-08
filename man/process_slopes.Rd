@@ -4,7 +4,7 @@
 \alias{process_slopes}
 \title{Wrapper to get calculate slopes, correct them, and filter them}
 \usage{
-process_slopes(input, r2 = 0.95, pre, post, method)
+process_slopes(input, r2 = 0.95, pre, post, method, correct_for_volume = FALSE)
 }
 \arguments{
 \item{input}{The output of \code{\link{process_experiment}}}
@@ -37,6 +37,15 @@ by cycle.
 \item  "none" - does not perform oxygen consumption subtraction.
 Not recommended for anything other than checking test data.
 }}
+
+\item{correct_for_volume}{Logical: Should the corrected chamber volume be
+used to remove the volume units from the slope? Defaults to FALSE, which
+is the right choice in most cases. If you are using a chamber to correct
+the background of other chambers but they don't have the same volume
+(not recommended), then you can set this to TRUE to minimise the impacts
+of the different volumes on the results. Note that chambers with different
+formats will have different surface-to-volume relationships, and might
+therefore not be good controls of each other.}
 }
 \value{
 An updated experiment list, containing two new objects; one with

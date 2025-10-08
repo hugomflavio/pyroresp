@@ -161,7 +161,7 @@ read_pyro_raw_file <- function(file, date_format,
 #' @param input A dataframe containing Timestamps on the first column and
 #'   matching data on the remaining. If input contains a "phase" column, it will
 #'   be transported to the output unchanged.
-#' @param patch_method One of:
+#' @param na_action One of:
 #'   'linear' to capture the nearest before and after non-NA values and make a
 #'        linear interpolation.
 #'   'before' to find the nearest non-NA value before the NA and use it to fill
@@ -175,10 +175,10 @@ read_pyro_raw_file <- function(file, date_format,
 #'
 #' @export
 #'
-patch_NAs <- function(input, patch_method = c('linear', 'before', 'after'),
+patch_NAs <- function(input, na_action = c('linear', 'before', 'after'),
     verbose = TRUE) {
 
-  patch_method <- match.arg(patch_method)
+  na_action <- match.arg(na_action)
 
   columns_to_check <- colnames(input)[-c(1, grep("phase", colnames(input)))]
   logical_input <- apply(input, 2, is.na)
@@ -212,7 +212,7 @@ patch_NAs <- function(input, patch_method = c('linear', 'before', 'after'),
 
       if (nrow(nas) > 0) {
         input <<- aux_fun_process_NAs(nas = nas, input = input,
-                                      patch_method = patch_method,
+                                      na_action = na_action,
                                       col = i, verbose = verbose)
       }
     }
@@ -230,10 +230,10 @@ patch_NAs <- function(input, patch_method = c('linear', 'before', 'after'),
 #'
 #' @keywords internal
 #'
-aux_fun_process_NAs <- function(nas, col, input, patch_method, verbose) {
+aux_fun_process_NAs <- function(nas, col, input, na_action, verbose) {
   # for every break found, apply the correction
   for (j in 1:nrow(nas)) {
-    if (patch_method == 'linear') {
+    if (na_action == 'linear') {
       # failsafe against NAs at the start when using linear
       if (nas$start[j] == 1) {
         if (verbose) {
@@ -267,7 +267,7 @@ aux_fun_process_NAs <- function(nas, col, input, patch_method, verbose) {
         # row 3 and 2 are NAs
       }
     }
-    if (patch_method == 'before') {
+    if (na_action == 'before') {
       if (nas$start[j] == 1) {
         if (verbose) {
           message("NAs found at the start of of column ", col, ".",
@@ -281,7 +281,7 @@ aux_fun_process_NAs <- function(nas, col, input, patch_method, verbose) {
         replacement <- input[nas$start[j] - 1, col]
       }
     }
-    if (patch_method == 'after') {
+    if (na_action == 'after') {
       if (nas$stop[j] == nrow(input)) {
         if (verbose) {
           message("NAs found at the end of of column ", col, ".",

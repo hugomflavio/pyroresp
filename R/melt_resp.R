@@ -80,8 +80,13 @@ melt_resp <- function(input) {
   if (!is.null(input$probe_info)) {
     # Include the extra information
     link <- match(pre_output$probe, input$probe_info$probe)
+    if ("mass" %in% colnames(input$probe_info)) {
+      to_transfer <- c("id", "mass", "volume")
+    } else {
+      to_transfer <- c("id", "volume")
+    }
     output <- cbind(pre_output,
-                    input$probe_info[link, c("id", "mass", "volume")])
+                    input$probe_info[link, to_transfer])
   } else {
     output <- as.data.frame(pre_output)
   }

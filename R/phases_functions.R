@@ -48,12 +48,13 @@ process_phases <- function(phases, tz = Sys.timezone()) {
 #' @param wait integer: the number of seconds at the start of each measurement 
 #'   phase (M) that should be reassigned to the wait phase (W). Note: If your
 #'   phase-tracking device already assigns a wait phase, set this to 0.
-#' 
+#' @param tail_trim integer: The number of seconds at the end of each
+#'   measurement phase (M) that should be discarded.
 #' @return An updated experiment list containing a phased data frame
 #' 
 #' @export
 #' 
-assign_phases <- function(input, wait) {
+assign_phases <- function(input, wait, tail_trim) {
   pyr <- input$pyro$compiled_data
   phases <- input$phases
   check_probes_match(colnames(pyr), phases)
@@ -72,8 +73,14 @@ assign_phases <- function(input, wait) {
 
       # assign device-given phases
       for (i in 1:nrow(phases[[prb]])) {
-        check1 <- pyr$date_time >= phases[[prb]]$start[i]
-        check2 <- pyr$date_time < phases[[prb]]$stop[i]
+        if (phases[[prb]]$phase[i] == "M") {
+          check1 <- pyr$date_time >= phases[[prb]]$start[i]
+          check2 <- pyr$date_time < phases[[prb]]$stop[i] - tail_trim
+        }
+        if (phases[[prb]]$phase[i] == "F") {
+          check1 <- pyr$date_time >= phases[[prb]]$start[i] - tail_trim
+          check2 <- pyr$date_time < phases[[prb]]$stop[i]
+        }
         this_phase <- check1 & check2
 
         pyr[this_phase, new_phase_col] <- paste0(phases[[prb]]$phase[i],

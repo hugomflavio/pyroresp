@@ -64,6 +64,7 @@ plot_bg <- function(input, probes, linewidth = 1.5) {
 #' 	\code{\link{melt_resp}}.
 #' @param cycles A numeric vector of which cycles to plot
 #' @param probes A string of which probes to plot
+#' @param type Should the plot show only "lines", "points", or "both"?
 #' @param show_temp Should the temperature recordings be plotted?
 #' @param verbose should argument warnings be displayed?
 #'
@@ -114,12 +115,13 @@ plot_meas <- function(input, cycles, probes,
 			# instead of using split, I need to manually break these
 			# because F0 can appear multiple times. split would
 			# group them together and mess up the plot
-			breaks <- c(1, cumsum(rle(aux[[the_idprobe]]$phase)$lengths))
-			aux2 <- lapply(2:length(breaks), function(i) {
-				meas[breaks[i-1]:breaks[i], ]
+			phase_info <- rle(aux[[the_idprobe]]$phase)
+			row_breaks <- c(1, cumsum(phase_info$lengths))
+			aux2 <- lapply(2:length(row_breaks), function(i) {
+				meas[row_breaks[i-1]:row_breaks[i], ]
 			})
 			# --
-			names(aux2) <- rle(aux[[the_idprobe]]$phase)$values
+			names(aux2) <- phase_info$values
 			aux2 <- aux2[grepl("F|W", names(aux2))]
 			# now extract start and end of phase
 			aux2 <- lapply(aux2, function(the_phase) {
@@ -147,18 +149,6 @@ plot_meas <- function(input, cycles, probes,
 												 ymin = ymin, ymax = ymax),
 									fill = "black", alpha = 0.1)
 	}
-
-	if (type %in% c("lines", "both")) {
-		p <- p + ggplot2::geom_line(ggplot2::aes(x = date_time,
-												 y = o2, group = phase,
-												 colour = "o2"))
-	}
-	if (type %in% c("points", "both")) {
-		p <- p + ggplot2::geom_point(ggplot2::aes(x = date_time,
-												 y = o2, group = phase,
-												 colour = "o2"))
-	}
-	p <- p + ggplot2::theme_bw()
 
 	if (show_temp) {
 		aux <- range(meas$o2, na.rm = TRUE)
@@ -207,6 +197,18 @@ plot_meas <- function(input, cycles, probes,
 	} else {
 		p <- p + ggplot2::scale_colour_manual(values = "royalblue")
 	}
+
+	if (type %in% c("lines", "both")) {
+		p <- p + ggplot2::geom_line(ggplot2::aes(x = date_time,
+												 y = o2, group = phase,
+												 colour = "o2"))
+	}
+	if (type %in% c("points", "both")) {
+		p <- p + ggplot2::geom_point(ggplot2::aes(x = date_time,
+												 y = o2, group = phase,
+												 colour = "o2"))
+	}
+	p <- p + ggplot2::theme_bw()
 
 	p <- p + ggplot2::theme(legend.position = "none")
 	p <- p + ggplot2::labs(y = units::make_unit_label("O[2]", o2_unit),
@@ -390,6 +392,12 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 	date_time <- mr_g <- mr_real <- value <- Method <- NULL
 
 	mr <- input$mr
+	if ("mr_g" %in% colnames(mr)) {
+		mr$mr <- mr$mr_g
+	} else {
+		mr$mr <- mr$mr_abs
+	}
+
 	mr$idprobe <- paste0(mr$id, " (", mr$probe, ")")
 	idprobe_levels <-paste0(input$probe_info$id,
 							" (", input$probe_info$probe, ")")
@@ -413,7 +421,7 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 	# if (!is.null(input$sim_params)) {
 	# 	p <- plot_sim_watermark(p = p,
 	# 					   x = mr$date_time,
-	# 					   y = c(mr$mr_real, mr$mr_g))
+	# 					   y = c(mr$mr_real, mr$mr))
 	# 	mr_real_aux <- data.frame(mr_real = input$sim_params$real_mr,
 	# 					          date_time = input$slopes$date_time)
 	# 	p <- p + ggplot2::geom_line(data = mr_real_aux,
@@ -425,23 +433,23 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 	# }
 
 	p <- p + ggplot2::geom_line(data = mr,
-								ggplot2::aes(x = date_time, y = mr_g))
+								ggplot2::aes(x = date_time, y = mr))
 	p <- p + ggplot2::geom_point(data = mr,
-								 ggplot2::aes(x = date_time, y = mr_g))
+								 ggplot2::aes(x = date_time, y = mr))
 
 	if (!is.null(input$smr)) {
 		# if (is.null(input$sim_params)) {
-			mr_cols <- grepl("mr_g", colnames(input$smr))
+			mr_cols <- grepl("_mr", colnames(input$smr))
 			smr <- reshape2::melt(input$smr,
 								  id.vars = c("probe", "id"),
 								  measure.vars = colnames(input$smr)[mr_cols])
-			smr$Method <- sub("_mr_g", "", smr$variable)
+			smr$Method <- sub("_mr", "", smr$variable)
 		# } else {
-			# mr_cols <- colnames(input$smr) %in% c("q0.2_mr_g", "q0.2_smr_real")
+			# mr_cols <- colnames(input$smr) %in% c("q0.2_mr", "q0.2_smr_real")
 			# smr <- reshape2::melt(input$smr,
 			# 					  id.vars = c("probe", "id"),
 			# 					  measure.vars = colnames(input$smr)[mr_cols])
-			# smr$Method <- sub("_mr_g", " estimated", smr$variable)
+			# smr$Method <- sub("_mr", " estimated", smr$variable)
 			# smr$Method <- sub("_smr_real", " real", smr$Method)			
 		# }
 		smr$idprobe <- paste0(smr$id, " (", smr$probe, ")")
@@ -470,7 +478,7 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 
 		p <- p + ggplot2::geom_point(data = mmr,
 									 ggplot2::aes(x = date_time,
-						 						  y = mr_g),
+						 						  y = mr),
 									 col = "red", size = 2)
 	}
 	

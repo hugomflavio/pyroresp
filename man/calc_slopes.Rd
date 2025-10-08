@@ -4,11 +4,20 @@
 \alias{calc_slopes}
 \title{Calculate slopes from clean measurements}
 \usage{
-calc_slopes(input)
+calc_slopes(input, correct_for_volume = FALSE)
 }
 \arguments{
 \item{input}{A dataframe of clean measurements.
 The output of \code{\link{trim_resp}}.}
+
+\item{correct_for_volume}{Logical: Should the corrected chamber volume be
+used to remove the volume units from the slope? Defaults to FALSE, which
+is the right choice in most cases. If you are using a chamber to correct
+the background of other chambers but they don't have the same volume
+(not recommended), then you can set this to TRUE to minimise the impacts
+of the different volumes on the results. Note that chambers with different
+formats will have different surface-to-volume relationships, and might
+therefore not be good controls of each other.}
 }
 \description{
 Calculate slopes from clean measurements
