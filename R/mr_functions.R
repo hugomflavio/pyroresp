@@ -1,33 +1,25 @@
 #' Calculate metabolic rates
 #'
-#' Calculates the absolute and mass-specific metabolic rates,
-#' as well as the relative importance of background (in percentage).
+#' Calculates absolute and mass-specific metabolic rates.
 #'
-#' @param slope_data  a data frame obtained by using either the
-#'  function \code{\link{calc_slopes}} or \code{\link{filter_r2}}
-#' @inheritParams conv_w_to_ml
+#' @param input a data frame with columns slope_cor (mandatory),
+#'  water_vol (mandatory), and animal_mass (optional).
 #'
-#' @return A data frame with mr_abs, bg, and mr_cor.
+#' @return The input with columns mr_abs and mr_g if animal_mass provided.
 #'
 #' @export
 #'
-calc_mr <- function(slope_data, density = 1){
-  if ("mass" %in% colnames(slope_data)) {
-    vol <- slope_data$volume - conv_w_to_ml(slope_data$mass, density)
-    slope_data$mr_abs <- -(slope_data$slope_cor * vol)
-
-    # temporarily drop and reassign units.
-    # this is needed to avoid {units} merging oxygen and animal
-    # weight when O2 is measured in weight (e.g. mg).
+calc_mr <- function(input){
+  input$mr_abs <- -(input$slope_cor * input$water_vol)
+  if ("animal_mass" %in% colnames(input)) {
     # see: https://github.com/r-quantities/units/issues/411
-    slope_data$mr_g <- drop_units(slope_data$mr_abs) / drop_units(slope_data$mass)
-    units(slope_data$mr_g) <- paste0(units(slope_data$mr_abs),
-                                     "/", units(slope_data$mass))
-  } else {
-    slope_data$mr_abs <- -slope_data$slope_cor
+    prev_option <- units_options("simplify")
+    units_options(simplify = FALSE)
+    input$mr_g <- input$mr_abs / input$animal_mass
+    units_options(simplify = prev_option)
   }
 
-  return(slope_data)
+  return(input)
 }
 
 #' Break down MR from a single cycle
@@ -98,9 +90,7 @@ roll_mr <- function(input, probe, cycle, smoothing, density = 1, r2 = 0.95) {
   output$slope_cor <- output$slope - output$slope_bg
 
   # convert to metabolic rate
-  the_vol <- this_data$volume[1] - conv_w_to_ml(this_data$mass[1], density)
-  output$mr_abs <- -(output$slope_cor * the_vol)
-  output$mr_g <- output$mr_abs / this_data$mass[1]
+  output <- calc_mr(output)
 
   # look out for bad slopes
   r2_link <- output$r2 >= r2
@@ -111,7 +101,12 @@ roll_mr <- function(input, probe, cycle, smoothing, density = 1, r2 = 0.95) {
   }
   # find the max value
   trim_mr <- output[r2_link, ]
-  index <- which.max(trim_mr$mr_g)
+
+  if ("mr_g" %in% colnames(trim_mr)) {
+    index <- which.max(trim_mr$mr_g)
+  } else {
+    index <- which.max(trim_mr$mr_abs)    
+  }
   max_mr <- trim_mr[index, , drop = FALSE]
 
   if (is.null(input$rolling_mr)) {

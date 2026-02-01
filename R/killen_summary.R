@@ -14,9 +14,8 @@
 #' @return a list of summary information
 #'
 killen_summary <- function(input) {
-  # 04
-  pt04 <- with(input$probe_info,
-               (volume - conv_w_to_ml(mass)) / conv_w_to_ml(mass))
+  # 04: water:mass ratio
+  pt04 <- input$probe_info$volmass_ratio
   # 15
   recipient <- lapply(input$pyro$source_data, function(i) {
     prb <- data.frame(probe = paste0(attributes(i)$device, attributes(i)$ch))
@@ -85,9 +84,9 @@ killen_summary <- function(input) {
   # bring it all together
   output <- list(
     pt01 = list(description = "mass of the animals",
-                value = input$probe_info$mass),
+                value = input$probe_info$animal_mass),
     pt02 = list(description = "volume of empty respirometer",
-                value = input$probe_info$volume),
+                value = input$probe_info$chamber_vol),
     pt04 = list(description = "ratio of net resp volume",
                 value = pt04),
     pt14 = list(description = "wait time (in number of data points)",

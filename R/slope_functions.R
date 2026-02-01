@@ -2,18 +2,18 @@
 #'
 #' @param input A dataframe of clean measurements.
 #'  The output of \code{\link{trim_resp}}.
-#' @param correct_for_volume Logical: Should the corrected chamber volume be
-#'  used to remove the volume units from the slope? Defaults to FALSE, which
+#' @param correct_for_water_vol Logical: Should water_vol be
+#'  used to remove the water_vol units from the slope? Defaults to FALSE, which
 #'  is the right choice in most cases. If you are using a chamber to correct
-#'  the background of other chambers but they don't have the same volume
+#'  the background of other chambers but they don't have the same water_vol
 #'  (not recommended), then you can set this to TRUE to minimise the impacts
-#'  of the different volumes on the results. Note that chambers with different
-#'  formats will have different surface-to-volume relationships, and might
+#'  of the different water_vols on the results. Note that chambers with different
+#'  formats will have different surface-to-water_vol relationships, and might
 #'  therefore not be good controls of each other.
 #'
 #' @export
 #'
-calc_slopes <- function(input, correct_for_volume = FALSE) {
+calc_slopes <- function(input, correct_for_water_vol = FALSE) {
   # The operation is done by cycle and by probe,
   # so the dataset is broken twice below
   by_probe <- split(input$trimmed, input$trimmed$probe)
@@ -25,18 +25,18 @@ calc_slopes <- function(input, correct_for_volume = FALSE) {
     recipient <- lapply(by_cycle, function(the_cycle) {
         output <- data.frame(probe = the_cycle$probe[1],
                              id = the_cycle$id[1],
-                             mass = NA_real_,
-                             volume = the_cycle$volume[1],
+                             animal_mass = NA_real_,
+                             water_vol = the_cycle$water_vol[1],
                              date_time = the_cycle$date_time[nrow(the_cycle)],
                              phase = the_cycle$phase[1],
                              cycle = the_cycle$cycle[1],
                              temp = mean(the_cycle$temp, na.rm = TRUE))
       
-      if ("mass" %in% colnames(the_cycle)) {
-        output$mass <- the_cycle$mass[1]
+      if ("animal_mass" %in% colnames(the_cycle)) {
+        output$animal_mass <- the_cycle$animal_mass[1]
       } else {
         # if mass is not provided, delete column
-        output$mass <- NULL
+        output$animal_mass <- NULL
       }
 
       if (all(is.na(the_cycle$o2_delta))) {
@@ -67,13 +67,8 @@ calc_slopes <- function(input, correct_for_volume = FALSE) {
 
   output <- as.data.frame(data.table::rbindlist(recipient))
 
-  if (correct_for_volume) {
-    if ("mass" %in% colnames(output)) {
-      water <- output$volume - conv_w_to_ml(output$mass)
-    } else {
-      water <- output$volume
-    }
-    output$slope <- output$slope * output$volume
+  if (correct_for_water_vol) {
+    output$slope <- output$slope * output$water_vol
   }
 
   if (any(is.na(output$slope))) {
@@ -122,7 +117,7 @@ calc_single_slope <- function(input, probe, cycle,
 
   the_cycle <- my_probe[my_probe$cycle == cycle, ]
 
-  if ((max_duration - skip) < 10) {
+  if ((max_duration - skip) < 20) {
     warning("Calculating very short slopes is unadvisable.",
             immediate. = TRUE, call. = FALSE)
   }
@@ -133,8 +128,8 @@ calc_single_slope <- function(input, probe, cycle,
 
   output <- data.frame(probe = the_cycle$probe[1],
                        id = the_cycle$id[1],
-                       mass = the_cycle$mass[1],
-                       volume = the_cycle$volume[1],
+                       animal_mass = the_cycle$animal_mass[1],
+                       water_vol = the_cycle$water_vol[1],
                        date_time = the_cycle$date_time[nrow(the_cycle)],
                        phase = the_cycle$phase[1],
                        cycle = the_cycle$cycle[1],
@@ -145,9 +140,8 @@ calc_single_slope <- function(input, probe, cycle,
     output$se <- NA
     output$r2 <- NA
   } else {
-    # lm and units don't play along well if you intend
-    # to ask for a summary. Must drop units and reattach
-    # them later until this is fixed.
+    # lm and units don't play along well. 
+    # Must drop units and reattach them later until this is fixed.
     m <- lm(as.numeric(o2_delta) ~ as.numeric(phase_time),
             data = the_cycle)
 

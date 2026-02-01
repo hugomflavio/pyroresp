@@ -201,7 +201,8 @@ subtract_bg <- function(input, pre, post,
       }
       link <- match(input$probe_info$ref, input$probe_info$probe)
       if (any(is.na(link))) {
-        stop("method = 'parallel' but not all values in probe_info$ref match probe names")
+        stop("method = 'parallel' but not all values in probe_info$ref",
+             " match probe names")
       }
     }
 

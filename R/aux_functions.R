@@ -263,3 +263,60 @@ auc <- function(x, y, zero = 0) {
 
 	return(df)
 }
+
+#' needs a better place in the future.
+#' needs to be exported in the future.
+#' 
+#' @keywords internal
+#' 
+process_probe_info <- function(input, vol_unit = "ml", mass_unit = "g") {
+  required_cols <- c("animal_id", "chamber_vol", "probe")
+  cols_missing <- !(required_cols %in% colnames(input))
+  if (any(cols_missing)) {
+    stop("The following required columns are missing ",
+       "from the input: ",
+       paste0(required_cols[cols_missing], collapse = ", "),
+       call. = FALSE)
+  }
+  if ("animal_vol" %in% colnames(input) &
+      !"animal_mass" %in% colnames(input)) {
+    warning("Column 'animal_mass' not found in the input.",
+            " Won't be able to calculate mass-corrected MO2.",
+            immediate. = TRUE, call. = FALSE)
+  }
+  if (!"animal_vol" %in% colnames(input) &
+      "animal_mass" %in% colnames(input)) {
+    warning("Column 'animal_vol' not found in the input.",
+            " Will assume animal density is 1.",
+            immediate. = TRUE, call. = FALSE)
+    input$animal_vol <- input$animal_mass
+  }
+  if (!"animal_vol" %in% colnames(input) &
+      !"animal_mass" %in% colnames(input)) {
+    warning("Neither 'animal_vol' nor 'animal_mass' found in the",
+            " input Won't be able to correct chamber volume",
+            " nor calculate mass-corrected MO2.",
+            immediate. = TRUE, call. = FALSE)
+  }
+
+  units(input$chamber_vol) <- vol_unit
+
+  check <- c("animal_vol", "animal_mass") %in% colnames(input)
+  if (check[1]) {
+    units(input$animal_vol) <- vol_unit
+    input$water_vol <- input$chamber_vol - input$animal_vol
+    input$volvol_ratio <- input$water_vol / input$animal_vol)
+  } else {
+    input$water_vol <- input$chamber_vol
+  }
+
+  if (check[2]) {
+    units(input$animal_mass) <- mass_unit
+    input$volmass_ratio <- input$water_vol / conv_w_to_ml(input$animal_mass)
+  }
+
+  if (all(check)) {
+    input$animal_density <- input$animal_mass / input$animal_vol
+  }    
+  return(input)
+}

@@ -9,20 +9,23 @@
 #' @inheritParams load_phases
 #' @param probe_info a dataframe containing animal information. This
 #'   dataframe must contain the following columns:
-#'     - id           : The ID of the animal
-#'     - mass         : The mass of the animal, in grams
-#'     - volume       : The non-corrected volume of the chamber + tubing
+#'     - animal_id    : The ID of the animal
+#'     - animal_mass  : The mass of the animal, in grams
+#'     - animal_vol   : Optional: The volume of the animal.
+#'                      Assumed to be equal to mass if missing.
+#'     - chamber_vol  : The non-corrected volume of the chamber
 #'     - probe        : The device-channel combination for the probe
 #'     - first_cycle  : The first cycle of valid data for that animal
 #'
 #' @return A list containing a phases dataframe and a pyro list with the
 #'   individual source data frames (in source_data), as well as a single,
-#'  combined data frame organized by time (in compiled_data).
+#'   combined data frame organized by time (in compiled_data).
 #'
 #' @export
 #'
 load_experiment <- function(folder, date_format, tz = Sys.timezone(),
-    phases, probe_info, encoding = "ISO-8859-1") {
+    phases, probe_info, encoding = "ISO-8859-1", mass_unit = "g",
+    vol_unit = "ml") {
 
   if (length(folder) == 0 || !dir.exists(folder)) {
     stop('Could not find target folder')
@@ -33,40 +36,25 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
   }
 
   if (!missing(probe_info)) {
-    if (!"mass" %in% colnames(probe_info)) {
-      warning("No column 'mass' found in the probe_info.",
-              " Won't correct chamber volume nor calculate",
-              " mass-corrected MO2.",
-              immediate. = TRUE, call. = FALSE)
-    }
-    required_cols <- c("id", "volume", "probe")
-    cols_missing <- !(required_cols %in% colnames(probe_info))
-    if (any(cols_missing)) {
-      stop("The following required columns are missing ",
-         "from the probe_info input: ",
-         paste0(required_cols[cols_missing], collapse = ", "),
-         call. = FALSE)
-    }
+    probe_info <- process_probe_info(probe_info,
+                                     vol_unit = vol_unit,
+                                     mass_unit = mass_unit)
+  } else {
+    probe_info <- NULL
   }
 
   if (any(sapply(names(phases), nchar) > 4)) {
-    warning("Long device names detected in the phases input. Are you sure",
-            " you appended the device names correctly to the file name?",
-            " These are the current device names: ", 
+    warning("Long device names detected in the phases input.",
+            " Confirm these are correct: ", 
             paste(names(phases), collapse = ", "), ".")
   }
 
-  pyro <- load_pyro_data(folder, date_format = date_format, tz = tz,
-               encoding = encoding)
+  pyro <- load_pyro_folder(folder, date_format = date_format,
+                           tz = tz, encoding = encoding)
 
-  output <- list(phases = phases, pyro = pyro)
-  
-  if (!missing(probe_info)) {
-    output$probe_info <- probe_info
-
-    units(output$probe_info$mass) <- "g"
-    units(output$probe_info$volume) <- "ml"
-  }
+  output <- list(phases = phases,
+                 pyro = pyro,
+                 probe_info = probe_info)
 
   return(output)
 }
@@ -81,7 +69,7 @@ load_experiment <- function(folder, date_format, tz = Sys.timezone(),
 #'
 #' @export
 #'
-load_pyro_data <- function(folder, date_format, tz, 
+load_pyro_folder <- function(folder, date_format, tz, 
     type = c("Oxygen", "pH", "Oxygen|pH"), encoding = "ISO-8859-1") {
   type <- match.arg(type)
 
@@ -115,27 +103,6 @@ load_pyro_data <- function(folder, date_format, tz,
 #' @export
 #' 
 compile_sources <- function(input) {
-  # start_aux <- sapply(input, function(i) {
-  #   as.character(min(i$date_time))
-  # })
-  # start_aux <- as.POSIXct(start_aux, tz = attributes(input[[1]]$date_time)$tz[1])
-  # very_start <- min(start_aux)
-
-  # end_aux <- sapply(input, function(i) {
-  #   as.character(max(i$date_time))
-  # })
-  # end_aux <- as.POSIXct(end_aux, tz = attributes(input[[1]]$date_time)$tz[1])
-  # very_end <- max(end_aux)
-
-  # recipient <- data.frame(date_time = seq(from = very_start,
-                                          # to = very_end, by = 1))
-
-  # for (i in input) {
-  #   new_piece <-  i[!duplicated(i$date_time), ]
-  #   recipient <- merge(recipient, new_piece,
-  #                      by = 'date_time', all = TRUE)
-  # }
-
   recipient <- input[[1]]
   head(recipient)
   recipient <- recipient[!duplicated(recipient$date_time), ]
@@ -172,7 +139,7 @@ compile_sources <- function(input) {
 #'   YYYY-MM-DD HH:MM:SS format.
 #' @param from_cycle,to_cycle
 #'   Trim the experiment to a specific group of cycles. You may use one or both
-#'  of these arguments at the same time. Input must be numeric.
+#'   of these arguments at the same time. Input must be numeric.
 #' @param verbose Logical. Should steps being taken be detailed with messages.
 #'   Defaults to TRUE.
 #' 

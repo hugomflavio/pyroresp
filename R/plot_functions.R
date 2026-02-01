@@ -478,7 +478,7 @@ plot_mr <- function(input, cycles, probes, verbose = TRUE) {
 
 		p <- p + ggplot2::geom_point(data = mmr,
 									 ggplot2::aes(x = date_time,
-						 						  y = mr),
+						 						  y = mmr),
 									 col = "red", size = 2)
 	}
 	
@@ -509,11 +509,11 @@ plot_smr <- function(input, probes) {
 		input$mr <- input$mr[input$mr$probe %in% probes, ]
 	}
 
-	mr_cols <- grepl("mr_g", colnames(input$smr))
+	mr_cols <- grepl("mr", colnames(input$smr))
 	aux <- reshape2::melt(input$smr,
 						  id.vars = c("probe", "id"),
 						  measure.vars = colnames(input$smr)[mr_cols])
-	aux$Method <- sub("_mr_g", "", aux$variable)
+	aux$Method <- sub("_mr", "", aux$variable)
 
 	# change facet labels
 	input$mr$idprobe <- paste0(input$mr$id, " (", input$mr$probe, ")")
