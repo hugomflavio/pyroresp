@@ -270,7 +270,7 @@ auc <- function(x, y, zero = 0) {
 #' @keywords internal
 #' 
 process_probe_info <- function(input, vol_unit = "ml", mass_unit = "g") {
-  required_cols <- c("animal_id", "chamber_vol", "probe")
+  required_cols <- c("id", "chamber_vol", "probe")
   cols_missing <- !(required_cols %in% colnames(input))
   if (any(cols_missing)) {
     stop("The following required columns are missing ",
@@ -305,7 +305,7 @@ process_probe_info <- function(input, vol_unit = "ml", mass_unit = "g") {
   if (check[1]) {
     units(input$animal_vol) <- vol_unit
     input$water_vol <- input$chamber_vol - input$animal_vol
-    input$volvol_ratio <- input$water_vol / input$animal_vol)
+    input$volvol_ratio <- input$water_vol / input$animal_vol
   } else {
     input$water_vol <- input$chamber_vol
   }

@@ -400,8 +400,8 @@ process_experiment <- function(input, wait = 0, tail_trim = 0,
 #' @export 
 #'
 process_slopes <- function(input, r2 = 0.95, pre, post, method,
-                           correct_for_volume = FALSE) {
-    input <- calc_slopes(input, correct_for_volume = correct_for_volume)
+                           correct_for_water_vol = FALSE) {
+    input <- calc_slopes(input, correct_for_water_vol = correct_for_water_vol)
   
     input <- subtract_bg(input = input, pre = pre,
                          post = post, method = method)
@@ -453,7 +453,7 @@ process_mr <- function(input, G = 1:4,
     input$smr <- NULL
   } else {
     input$smr <- calc_smr(input$mr, G = G, q = q, p = p, n = n)
-    keep_these <- !(colnames(input$smr) %in% c("id", "mass", "volume"))
+    keep_these <- !(colnames(input$smr) %in% c("id", "animal_mass", "water_vol"))
     smr_aux <- input$smr[, keep_these]
     input$smr <- merge(input$probe_info, smr_aux, 
                         by = "probe", all = TRUE)
@@ -463,8 +463,11 @@ process_mr <- function(input, G = 1:4,
       prefix <- sub("_mr", "", i)
       if (!is.null(input$bg$pre)) {
         new_col <- paste0(prefix, "pre_bg_pct")
-        aux <- input$smr[, i]
-        aux <- -aux * input$smr$mass / input$smr$volume
+        aux <- -input$smr[, i]
+        if ("animal_mass" %in% colnames(input$smr)) {
+          aux <- aux * input$smr$animal_mass
+        }
+        aux <- aux  / input$smr$water_vol
         units(aux) <- units(input$bg$pre$bg$slope)
         bg_link <- match(input$smr$probe, input$bg$pre$bg$probe)
         input$smr[, new_col] <- input$bg$pre$bg$slope[bg_link] / aux
@@ -473,8 +476,11 @@ process_mr <- function(input, G = 1:4,
       }
       if (!is.null(input$bg$post)) {
         new_col <- paste0(prefix, "post_bg_pct")
-        aux <- input$smr[, i]
-        aux <- -aux * input$smr$mass / input$smr$volume
+        aux <- -input$smr[, i]
+        if ("animal_mass" %in% colnames(input$smr)) {
+          aux <- aux * input$smr$animal_mass
+        }
+        aux <- aux  / input$smr$water_vol
         units(aux) <- units(input$bg$post$bg$slope)
         bg_link <- match(input$smr$probe, input$bg$post$bg$probe)
         input$smr[, new_col] <- input$bg$post$bg$slope[bg_link] / aux
@@ -488,26 +494,27 @@ process_mr <- function(input, G = 1:4,
   input$mmr <- extract_mmr(input$mr)
   mmr_aux <- input$mmr[, !(colnames(input$mmr) %in% c("id", "mass", "volume"))]
   input$mmr <- merge(input$probe_info, mmr_aux,
-                      by = "probe", all = TRUE)
+                     by = "probe", all = TRUE)
 
-  if (!is.null(input$smr) && !is.null(input$bg$pre)) {
-    aux <- -input$mmr$mr_g * input$mmr$mass / input$smr$volume
-    units(aux) <- units(input$bg$pre$bg$slope)
-    bg_link <- match(input$mmr$probe, input$bg$pre$bg$probe)
-    input$mmr$pre_bg_pct <- input$bg$pre$bg$slope[bg_link] / aux
-    # units is now "1"; changing to percent automatically multiplies by 100
-    units(input$mmr$pre_bg_pct) <- "percent"
-  }
-  if (!is.null(input$smr) && !is.null(input$bg$post)) {
-    aux <- -input$mmr$mr_g * input$mmr$mass / input$smr$volume
-    units(aux) <- units(input$bg$post$bg$slope)
-    bg_link <- match(input$mmr$probe, input$bg$post$bg$probe)
-    input$mmr$post_bg_pct <- input$bg$post$bg$slope[bg_link] / aux
-    # units is now "1"; changing to percent automatically multiplies by 100
-    units(input$mmr$post_bg_pct) <- "percent"
-  }
-  # how to make a bg summary when using a reference chamber?
+  ## calculating bg as a percentage of mmr seems irrelevant.
 
+  # if (!is.null(input$smr) && !is.null(input$bg$pre)) {
+  #   aux <- -input$mmr$mr_g * input$mmr$mass / input$smr$volume
+  #   units(aux) <- units(input$bg$pre$bg$slope)
+  #   bg_link <- match(input$mmr$probe, input$bg$pre$bg$probe)
+  #   input$mmr$pre_bg_pct <- input$bg$pre$bg$slope[bg_link] / aux
+  #   # units is now "1"; changing to percent automatically multiplies by 100
+  #   units(input$mmr$pre_bg_pct) <- "percent"
+  # }
+  # if (!is.null(input$smr) && !is.null(input$bg$post)) {
+  #   aux <- -input$mmr$mr_g * input$mmr$mass / input$smr$volume
+  #   units(aux) <- units(input$bg$post$bg$slope)
+  #   bg_link <- match(input$mmr$probe, input$bg$post$bg$probe)
+  #   input$mmr$post_bg_pct <- input$bg$post$bg$slope[bg_link] / aux
+  #   # units is now "1"; changing to percent automatically multiplies by 100
+  #   units(input$mmr$post_bg_pct) <- "percent"
+  # }
+  
   return(input)
 }
  
