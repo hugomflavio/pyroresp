@@ -11,7 +11,7 @@ extract_mmr <- function(mr){
 
   recipient <- lapply(by_probe, function(the_probe) {
     target <- ifelse ("animal_mass" %in% colnames(the_probe),
-                      "mr_g", "mr_abs") {
+                      "mr_g", "mr_abs")
     the_probe$mmr <- the_probe[, target]
     index <- order(the_probe$mmr, decreasing = TRUE)[1]
     output <- the_probe[index, ]

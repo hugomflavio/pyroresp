@@ -4,20 +4,15 @@
 \alias{calc_mr}
 \title{Calculate metabolic rates}
 \usage{
-calc_mr(slope_data, density = 1)
+calc_mr(input)
 }
 \arguments{
-\item{slope_data}{a data frame obtained by using either the
-function \code{\link{calc_slopes}} or \code{\link{filter_r2}}}
-
-\item{density}{The density. defaults to 1 (1 g = 1 ml).
-Higher densities lead to lower volumes, e.g. if density = 2,
-then 1 g = 0.5 ml.}
+\item{input}{a data frame with columns slope_cor (mandatory),
+water_vol (mandatory), and animal_mass (optional).}
 }
 \value{
-A data frame with mr_abs, bg, and mr_cor.
+The input with columns mr_abs and mr_g if animal_mass provided.
 }
 \description{
-Calculates the absolute and mass-specific metabolic rates,
-as well as the relative importance of background (in percentage).
+Calculates absolute and mass-specific metabolic rates.
 }

@@ -4,11 +4,14 @@
 \alias{extract_epoc}
 \title{Extracts the cumulative AUC}
 \usage{
-extract_epoc(input, max_duration = Inf)
+extract_epoc(input, min_duration = 0, max_duration = Inf)
 }
 \arguments{
 \item{input}{a resp object with an "auc" sub-object.
 The output of \code{\link{calc_auc}}}
+
+\item{min_duration}{minimum time during which auc mas continue being counted
+even if it reaches 0 before it. Useful for animals that can stop breathing.}
 
 \item{max_duration}{maximum time allowed for the auc to reach 0 (in hours).
 if AUC does not reach 0 before this threshold, the cumulative AUC for the
