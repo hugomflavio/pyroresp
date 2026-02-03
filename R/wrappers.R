@@ -128,6 +128,8 @@ compile_sources <- function(input) {
 #' @param input The output of \code{\link{load_experiment}}
 #' @param original_o2 The o2 unit the data was captured in.
 #' @param convert_o2_to The o2 unit desired for the final results.
+#' @param conv_with_mean_temp Calculate the mean temperature experienced
+#'   during a given phase and use that for O2 unit conversion.
 #' @param min_temp,max_temp 
 #'   For temperature ramp experiments. The minimum OR maximum temperatures
 #'   that must be reached before data is considered valid. Discards all phases
@@ -150,6 +152,7 @@ compile_sources <- function(input) {
 #'
 process_experiment <- function(input, wait = 0, tail_trim = 0,
     meas_max = Inf, meas_min = 60, original_o2, convert_o2_to,
+    conv_with_mean_temp = FALSE,
     na_action = c("ignore", "linear", "before", "after", "remove"),
     zero_buffer = 3, first_cycle = 1,
     min_temp, max_temp, start_time, stop_time, from_cycle, to_cycle,
@@ -204,6 +207,31 @@ process_experiment <- function(input, wait = 0, tail_trim = 0,
                        meas_min = meas_min,
                        first_cycle = first_cycle)
 
+  if (conv_with_mean_temp) {
+    if (verbose) message("M: Calculating mean temp per phase.")
+    aux <- aggregate(as.numeric(input$trimmed$temp),
+                     list(probe = input$trimmed$probe,
+                          phase = input$trimmed$phase),
+                     mean, na.rm = TRUE)
+    input_probe_phase <- paste(input$trimmed$probe, input$trimmed$phase)
+    aux_probe_phase <- paste(aux$probe, aux$phase)
+    link <- match(input_probe_phase, aux_probe_phase)
+    input$trimmed$conv_temp <- aux$x[link]
+
+    aux <- aggregate(as.numeric(input$melted$temp),
+                     list(probe = input$melted$probe,
+                          phase = input$melted$phase),
+                     mean, na.rm = TRUE)
+    input_probe_phase <- paste(input$melted$probe, input$melted$phase)
+    aux_probe_phase <- paste(aux$probe, aux$phase)
+    link <- match(input_probe_phase, aux_probe_phase)
+    input$melted$conv_temp <- aux$x[link]
+
+  } else {
+    input$trimmed$conv_temp <- as.numeric(input$trimmed$temp)
+    input$melted$conv_temp <- as.numeric(input$melted$temp)
+  }
+
   if (verbose) message("M: Calculating air saturation.")
 
   o2_conv_cols <- c("o2", "temp", "sal", "pressure")
@@ -220,7 +248,7 @@ process_experiment <- function(input, wait = 0, tail_trim = 0,
       o2 = as.numeric(input$trimmed$o2[not_NA]),
       from = original_o2,
       to = "percent_a.s.", 
-      temp = as.numeric(input$trimmed$temp[not_NA]), 
+      temp = as.numeric(input$trimmed$conv_temp[not_NA]), 
       sal = as.numeric(input$trimmed$sal[not_NA]), 
       atm_pres = as.numeric(input$trimmed$pressure[not_NA])
     )
@@ -248,7 +276,7 @@ process_experiment <- function(input, wait = 0, tail_trim = 0,
         o2 = input$trimmed$o2[not_NA],
         from = original_o2,
         to = convert_o2_to, 
-        temp = as.numeric(input$trimmed$temp[not_NA]), 
+        temp = as.numeric(input$trimmed$conv_temp[not_NA]), 
         sal = as.numeric(input$trimmed$sal[not_NA]), 
         atm_pres = as.numeric(input$trimmed$pressure[not_NA])
       )
@@ -263,12 +291,16 @@ process_experiment <- function(input, wait = 0, tail_trim = 0,
         o2 = input$melted$o2[not_NA],
         from = original_o2,
         to = convert_o2_to, 
-        temp = as.numeric(input$melted$temp[not_NA]), 
+        temp = as.numeric(input$melted$conv_temp[not_NA]), 
         sal = as.numeric(input$melted$sal[not_NA]), 
         atm_pres = as.numeric(input$melted$pressure[not_NA])
       )
     units(input$melted$o2) <- gsub("_per_", "/", convert_o2_to)
   }
+
+  # remove temporary temperature columns
+  input$trimmed$conv_temp <- NULL
+  input$melted$conv_temp <- NULL
 
   if (verbose) message("M: Calculating deltas.")
   input$trimmed <- calc_delta(input$trimmed, zero_buffer = zero_buffer)
