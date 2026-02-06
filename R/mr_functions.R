@@ -69,6 +69,8 @@ roll_mr <- function(input, probe, cycle, smoothing, density = 1, r2 = 0.95) {
             data = this_data[(i - smoothing + 1):i, ])
     output <- data.frame(id = this_id,
                          probe = probe,
+                         animal_mass = this_data$animal_mass[1],
+                         water_vol = this_data$water_vol[1],
                          cycle = cycle,
                          phase_time = i,
                          smoothing = smoothing,
