@@ -176,6 +176,30 @@ process_experiment <- function(input, wait = 0, tail_trim = 0,
          " at a time. See function help for details.")
   }
 
+  if (!missing(start_time)) {
+    if (verbose) {
+      message(paste0("M: Discarding readings before ", start_time, "."))
+    }
+    keep <- input$pyro$compiled_data$date_time >= as.POSIXct(start_time)
+    if (all(!keep)) {
+      stop ("Data ends before ", start_time, ".")
+    } else {
+      input$pyro$compiled_data <- input$pyro$compiled_data[keep, ]
+    }
+  }
+
+  if (!missing(stop_time)) {
+    if (verbose) {
+      message(paste0("M: Discarding readings after ", stop_time, "."))
+    }
+    keep <- input$pyro$compiled_data$date_time <= as.POSIXct(stop_time)
+    if (all(!keep)) {
+      stop ("Data starts after ", stop_time, ".")
+    } else {
+      input$pyro$compiled_data <- input$pyro$compiled_data[keep, ]
+    }
+  }
+
   if (verbose) {
     message("M: Merging pyroscience and phases file.")
   }
@@ -333,40 +357,6 @@ process_experiment <- function(input, wait = 0, tail_trim = 0,
     first_true <- head(the_matches, 1)
     time_break <- input$trimmed$date_time[first_true]
     input$trimmed <- input$trimmed[input$trimmed$date_time >= time_break, ]
-  }
-
-  if (!missing(start_time)) {
-    if (verbose) {
-      message(paste0("M: Discarding phases before ", start_time, "."))
-    }
-    the_matches <- which(input$trimmed$date_time >= as.POSIXct(start_time))
-    cutoff <- head(the_matches, 1)
-    if (length(cutoff) == 0) {
-      stop ("Data ends before ", start_time, ".")
-    } else {
-      first_phase <- input$trimmed$phase[cutoff]
-      the_matches <- which(input$trimmed$phase == first_phase)
-      first_true <- head(the_matches, 1)
-      break_ <- input$trimmed$date_time[first_true]
-      input$trimmed <- input$trimmed[input$trimmed$date_time >= break_, ]
-    }
-  }
-
-  if (!missing(stop_time)) {
-    if (verbose) {
-      message(paste0("M: Discarding phases after ", stop_time, "."))
-    }
-    the_matches <- which(input$trimmed$date_time <= as.POSIXct(stop_time))
-    cutoff <- tail(the_matches, 1)
-    if (length(cutoff) == 0) {
-      stop ("Data starts after ", stop_time, ".")
-    } else {
-      last_phase <- input$trimmed$phase[cutoff]
-      the_matches <- which(input$trimmed$phase == last_phase)
-      last_true <- tail(the_matches, 1)
-      break_ <- input$trimmed$date_time[last_true]
-      input$trimmed <- input$trimmed[input$trimmed$date_time <= break_, ]
-    }
   }
 
   if (!missing(from_cycle)) {
