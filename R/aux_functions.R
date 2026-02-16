@@ -278,6 +278,9 @@ process_probe_info <- function(input, vol_unit = "ml", mass_unit = "g") {
        paste0(required_cols[cols_missing], collapse = ", "),
        call. = FALSE)
   }
+  if (any(is.na(input[, required_cols]))) {
+  	stop("NAs found in required probe_info columns", call. = FALSE)
+  }
   if ("animal_vol" %in% colnames(input) &
       !"animal_mass" %in% colnames(input)) {
     warning("Column 'animal_mass' not found in the input.",
@@ -297,6 +300,16 @@ process_probe_info <- function(input, vol_unit = "ml", mass_unit = "g") {
             " input Won't be able to correct chamber volume",
             " nor calculate mass-corrected MO2.",
             immediate. = TRUE, call. = FALSE)
+  }
+  if ("animal_mass" %in% colnames(input) &
+  	any(is.na(input$animal_mass))) {
+  	stop("probe_info contains animal_mass but some data is missing.",
+  			 call. = FALSE)
+  }
+  if ("animal_vol" %in% colnames(input) &
+  	any(is.na(input$animal_mass))) {
+  	stop("probe_info contains animal_vol but some data is missing.",
+  			 call. = FALSE)
   }
 
   units(input$chamber_vol) <- vol_unit
