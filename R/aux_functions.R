@@ -307,7 +307,7 @@ process_probe_info <- function(input, vol_unit = "ml", mass_unit = "g") {
   			 call. = FALSE)
   }
   if ("animal_vol" %in% colnames(input) &
-  	any(is.na(input$animal_mass))) {
+  	any(is.na(input$animal_vol))) {
   	stop("probe_info contains animal_vol but some data is missing.",
   			 call. = FALSE)
   }
