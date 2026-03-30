@@ -60,11 +60,18 @@ calc_auc <- function(mmr, smr, smr_col, smr_buffer = 0.1) {
     the_probe <- the_mr$probe[1]
     the_smr <- smr$smr[smr$smr$probe == the_probe, smr_col]
 
-    the_auc <- auc(y = the_mr$mr_over_smr,
-                   x = the_mr$time_since_chase,
-                   zero = the_smr * smr_buffer)
-    colnames(the_auc)[1:2] <- c("time_delta", "mr_delta")
-    the_auc$probe <- the_probe
+    if (nrow(the_mr) > 1) {
+      the_auc <- auc(y = the_mr$mr_over_smr,
+                     x = the_mr$time_since_chase,
+                     zero = the_smr * smr_buffer)
+      colnames(the_auc)[1:2] <- c("time_delta", "mr_delta")
+      the_auc$probe <- the_probe
+    } else {
+      warning("Not enough MR points to calculate AUC for probe ",
+              the_mr$probe[1], ". Skipping.", call. = FALSE,
+              immediate. = TRUE)
+      the_auc <- NULL
+    }
     return(the_auc)
   })
 
@@ -83,6 +90,8 @@ calc_auc <- function(mmr, smr, smr_col, smr_buffer = 0.1) {
 #'
 #' @param input a resp object with an "auc" sub-object.
 #'   The output of \code{\link{calc_auc}}
+#' @param min_duration minimum time during which auc mas continue being counted
+#'   even if it reaches 0 before it. Useful for animals that can stop breathing.
 #' @param max_duration maximum time allowed for the auc to reach 0 (in hours).
 #'   if AUC does not reach 0 before this threshold, the cumulative AUC for the
 #'   whole duration is used.
@@ -91,24 +100,29 @@ calc_auc <- function(mmr, smr, smr_col, smr_buffer = 0.1) {
 #'
 #' @export
 #' 
-extract_epoc <- function(input, max_duration = Inf) {
+extract_epoc <- function(input, min_duration = 0, max_duration = Inf) {
   if (is.null(input$auc)) {
     stop("Couldn't find object 'auc' inside input.",
          " Have you run calc_auc?", call. = FALSE)
   }
   units(max_duration) <- units(input$auc$time_delta)
+  units(min_duration) <- units(input$auc$time_delta)
 
   by_probe <- split(input$auc, input$auc$probe)
 
   recipient <- lapply(by_probe, function(x) {
-    x <- x[x$time_delta <= max_duration, ]
+    x <- x[x$time_delta >= min_duration & x$time_delta <= max_duration, ]
     epoc_ended <- min(which(as.numeric(x$mr_delta) < 0), nrow(x))
     output <- data.frame(probe = x$probe[1],
                          epoc = x$cumauc[epoc_ended],
                          epoc_duration = x$time_delta[epoc_ended])
-    this_probe <- input$mr$probe == x$probe[1]
-    this_time <- input$mr$time_since_chase == x$time_delta[epoc_ended]
-    output$fold_over_smr_at_end <- input$mr$fold_over_smr[this_probe & this_time]
+    if (drop_units(output$epoc_duration) == 0) {
+      output$fold_over_smr_at_end <- NA
+    } else {
+      this_probe <- input$mr$probe == x$probe[1]
+      this_time <- input$mr$time_since_chase == x$time_delta[epoc_ended]
+      output$fold_over_smr_at_end <- input$mr$fold_over_smr[this_probe & this_time]
+    }
     return(output)
   })
   the_epoc <- do.call(rbind, recipient)

@@ -10,20 +10,17 @@ extract_mmr <- function(mr){
   by_probe <- split(mr, mr$probe)
 
   recipient <- lapply(by_probe, function(the_probe) {
-      if ("mass" %in% colnames(the_probe)) {
-        index <- head(order(the_probe$mr_g, decreasing = TRUE), 1)
-        the_probe$mr <- the_probe$mr_g
-      } else {
-        index <- head(order(the_probe$mr_abs, decreasing = TRUE), 1)
-        the_probe$mr <- the_probe$mr_abs
-      }
-      output <- the_probe[index, ]
-    })
+    target <- ifelse ("animal_mass" %in% colnames(the_probe),
+                      "mr_g", "mr_abs")
+    the_probe$mmr <- the_probe[, target]
+    index <- order(the_probe$mmr, decreasing = TRUE)[1]
+    output <- the_probe[index, ]
+  })
 
   mmr <- as.data.frame(data.table::rbindlist(recipient))
 
   # Keep only needed columns
-    mmr <- mmr[, c("probe", "date_time", "cycle", "mr")]
-  
+    mmr <- mmr[, c("probe", "date_time", "cycle", "mmr")]
+
   return(mmr)
 }

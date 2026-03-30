@@ -2,6 +2,12 @@
 
 Find out the main highlights of each update.
 
+## pyroresp dev
+
+Enhancements:
+  * Separate animal mass and volume into different variables so the user may define those individually.
+  * Calculate background progression as a function of time rather than a function of measurement cycle: Fixes under/over estimations when bg doesn't perfectly bracket the data being analysed.
+
 ## pyroresp 0.1.1
 
 Version used for microtag respirometry paper

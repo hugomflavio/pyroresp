@@ -10,7 +10,9 @@ load_experiment(
   tz = Sys.timezone(),
   phases,
   probe_info,
-  encoding = "ISO-8859-1"
+  encoding = "ISO-8859-1",
+  mass_unit = "g",
+  vol_unit = "ml"
 )
 }
 \arguments{
@@ -24,9 +26,11 @@ load_experiment(
 
 \item{probe_info}{a dataframe containing animal information. This
 dataframe must contain the following columns:
-- id           : The ID of the animal
-- mass         : The mass of the animal, in grams
-- volume       : The non-corrected volume of the chamber + tubing
+- animal_id    : The ID of the animal
+- animal_mass  : The mass of the animal, in grams
+- animal_vol   : Optional: The volume of the animal.
+Assumed to be equal to mass if missing.
+- chamber_vol  : The non-corrected volume of the chamber
 - probe        : The device-channel combination for the probe
 - first_cycle  : The first cycle of valid data for that animal}
 

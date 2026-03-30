@@ -11,7 +11,7 @@
 #'
 #' @export
 #'
-calc_bg <- function(input, method = c('mean', 'first', 'last')){
+calc_bg <- function(input, method = c('mean', 'first', 'last')) {
 
   method <- match.arg(method)
 
@@ -44,7 +44,8 @@ calc_bg <- function(input, method = c('mean', 'first', 'last')){
     bg_lm$coefficients[1] <- 0
 
     output <- data.frame(slope = bg_lm$coefficients[2],
-                         R2 = summary(bg_lm)$adj.r.squared)
+                         R2 = summary(bg_lm)$adj.r.squared,
+                         date_time = tail(trimmed$date_time, 1))
     # done
     return(output)
   })
@@ -151,7 +152,7 @@ replace_bg <- function(input, replace, with) {
 subtract_bg <- function(input, pre, post,
                         method = c("pre", "post", "average",
                                    "linear", "parallel", "none"),
-                        ref_probe){
+                        ref_probe) {
 
   method <- match.arg(method)
 
@@ -201,7 +202,8 @@ subtract_bg <- function(input, pre, post,
       }
       link <- match(input$probe_info$ref, input$probe_info$probe)
       if (any(is.na(link))) {
-        stop("method = 'parallel' but not all values in probe_info$ref match probe names")
+        stop("method = 'parallel' but not all values in probe_info$ref",
+             " match probe names")
       }
     }
 
@@ -302,8 +304,13 @@ calc_linear_bg <- function(input, pre, post) {
     # cat(probe, "\n")
     pre_slope <- pre$bg$slope[pre$bg$probe == probe]
     post_slope <- post$bg$slope[post$bg$probe == probe]
+    pre_time <- pre$bg$date_time[pre$bg$probe == probe]
+    post_time <- post$bg$date_time[post$bg$probe == probe]
 
     slope_diff <- post_slope - pre_slope
+    time_diff <- as.numeric(difftime(post_time, pre_time, units = "s"))
+    units(time_diff) <- "s"
+    bg_progression <- slope_diff/time_diff
 
     if (as.numeric(slope_diff) == 0) {
       stop("The pre-bg and post-bg are exactly the same!",
@@ -311,16 +318,17 @@ calc_linear_bg <- function(input, pre, post) {
     }
 
     # linear slope_incr.
-    slope_incr <- slope_diff / (cycles - 1)
-
-    slope_bg <- seq(from = pre_slope,
-                   to = post_slope,
-                   by = slope_incr)
+    the_slopes <- input$slopes[input$slopes$probe == probe, ]
 
     output <- data.frame(probe = probe,
-                         cycle = 1:cycles,
-                         slope_bg = slope_bg)
+                         date_time = the_slopes$date_time,
+                         cycle = the_slopes$cycle)
 
+    output$time_since_bg <- as.numeric(difftime(output$date_time,
+                                                pre_time,
+                                                units = "s"))
+    units(output$time_since_bg) <- "s"
+    output$slope_bg <- pre_slope + bg_progression * output$time_since_bg
     return(output)
   })
   output <- do.call(rbind, my_bg)

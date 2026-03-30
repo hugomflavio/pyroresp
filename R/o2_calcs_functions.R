@@ -45,7 +45,7 @@ trim_resp <- function(input, meas_max = Inf, meas_min = 60,
     link <- !(target_probes %in% names(first_cycle))
     if (any(link)) {
       stop("Length of argument 'first_cycle' is not 1 but named values",
-           " not supplied for all probes (missing",
+           " not supplied for all probes (missing ",
            paste0(target_probes[link], collapse = ", "), ").",
            call. = FALSE)
     }

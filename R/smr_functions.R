@@ -28,9 +28,9 @@ calc_smr <- function(mr, G = 1:4, q = c(0.2, 0.25), p = 0.1, n = 10){
   issue_low_n_warning <- TRUE
 
   recipient <- lapply(by_probe, function(the_probe) {
-
-    if ("mass" %in% colnames(the_probe)) {
-      output <- the_probe[1, c("probe", "id", "mass")]
+    # cat(the_probe$probe[1], "\n")
+    if ("animal_mass" %in% colnames(the_probe)) {
+      output <- the_probe[1, c("probe", "id", "animal_mass")]
       the_probe$input_mr <- the_probe$mr_g
     } else {
       output <- the_probe[1, c("probe", "id")]
