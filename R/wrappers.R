@@ -425,6 +425,10 @@ process_slopes <- function(input, r2 = 0.95, pre, post, method,
 process_mr <- function(input, G = 1:4, 
              q = c(0.2, 0.25), p = 0.1, n = 10) {
 
+  if (is.null(input$good_slopes)) {
+    stop("input has no good slope data.",
+         call. = FALSE)
+  }
   input$mr <- calc_mr(input$good_slopes)
 
   # convert seconds to hours (more common)
