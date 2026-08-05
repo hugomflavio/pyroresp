@@ -37,12 +37,13 @@ calc_auc <- function(mmr, smr, smr_col, smr_buffer = 0.1) {
 
   by_probe <- split(mmr$mr, mmr$mr$probe)
 
+  the_mr <- by_probe[["C2"]]
   # update mr table to include mr_over_smr and pct_over_smr
   by_probe <- lapply(by_probe, function(the_mr) {
     the_probe <- the_mr$probe[1]
     the_smr <- smr$smr[smr$smr$probe == the_probe, smr_col]
     the_phases <- mmr$phases[[which(names(mmr$phases) == the_probe)]]
-    this_cycle <- the_phases$cycle == the_mr$cycle[1]
+    this_cycle <- the_phases$cycle == min(the_mr$cycle)
     this_phase <- the_phases$phase == "M"
     this_start <- the_phases$start[this_cycle & this_phase]
 

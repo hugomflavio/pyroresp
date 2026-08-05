@@ -243,10 +243,11 @@ auc <- function(x, y, zero = 0) {
 	if (length(x) != length(y)) {
 		stop("x and y must have same length")
 	}
+	y <- y[order(x)]
+	x <- x[order(x)]
 	aux <- as_units(0, value = units(x))
 	df <- data.frame(x = c(aux, x),
 	                 y = y[c(1, 1:length(y))] - zero)
-	df <- df[order(x), ]
 	df$auc <- 0
 
 	for (i in 2:nrow(df)) {
